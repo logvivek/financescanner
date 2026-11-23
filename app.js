@@ -1,4 +1,6 @@
 const STORAGE_KEY = "finsight-setups-v1";
+const RESEARCH_INDEX_NAMES = ["Dow Jones", "DAX", "CAC 40", "Hang Seng", "Nikkei 225"];
+const MARKET_RESEARCH_PROMPT = "You are my market research assistant. Brief me on the latest NSE/BSE session as a swing trader. 1) Top 5 market-moving headlines. For each: what happened in one line, facts only; sectors or stocks affected; impact on NIFTY — bullish / bearish / neutral. 2) A table of yesterday's global closes: Dow Jones, DAX, CAC 40, Hang Seng, Nikkei 225. State today's date and name your source for each headline. Under 300 words. Plain language.";
 
 const defaultSetups = [
   { id: "gfs", name: "GFS", range: "38-43", color: "blue" },
@@ -619,6 +621,7 @@ function renderDailyMarketResearch() {
     "site:leprivatebanker.com"
   ].join(" OR ");
   const searchQueries = {
+    "google-prompt-search": MARKET_RESEARCH_PROMPT,
     "google-headlines-search": `latest NSE BSE market-moving headlines today (${publisherSites})`,
     "google-dow-search": "Dow Jones previous close CNBC AP",
     "google-europe-search": "DAX CAC 40 previous close investingLive",
@@ -630,42 +633,151 @@ function renderDailyMarketResearch() {
     document.getElementById(id).href = url.href;
   });
   renderResearchHeadlines([]);
+  renderGlobalMarketCloses([]);
+}
 
-  const indices = ["Dow Jones", "DAX", "CAC 40", "Hang Seng", "Nikkei 225"];
+function renderGlobalMarketCloses(closes) {
+  const closeByName = new Map(closes.map(close => [close.index, close]));
   const body = document.getElementById("global-closes-body");
-  body.innerHTML = "";
-  indices.forEach(name => {
+  body.replaceChildren();
+  RESEARCH_INDEX_NAMES.forEach(name => {
+    const data = closeByName.get(name);
     const row = document.createElement("tr");
-    const symbol = name.split(/\s+/).map(part => part[0]).join("").slice(0, 2);
     const indexCell = document.createElement("td");
     const nameWrap = document.createElement("span");
     const mark = document.createElement("span");
     nameWrap.className = "global-index-name";
     mark.className = "global-index-mark";
-    mark.textContent = symbol;
+    mark.textContent = name.split(/\s+/).map(part => part[0]).join("").slice(0, 2);
     nameWrap.append(mark, document.createTextNode(name));
-    indexCell.appendChild(nameWrap);
-    row.appendChild(indexCell);
+    indexCell.append(nameWrap);
+    row.append(indexCell);
 
-    ["Unavailable", "Unavailable", "—", "—"].forEach((value, index) => {
+    const values = [
+      data ? data.tradingDate : null,
+      data ? data.close : null,
+      data ? data.changePoints : null,
+      data ? data.changePercent : null
+    ];
+    values.forEach((value, index) => {
       const cell = document.createElement("td");
-      const unavailable = document.createElement("span");
-      unavailable.className = "global-unavailable";
-      unavailable.textContent = value;
-      if (index === 2) unavailable.setAttribute("aria-label", "Change in points unavailable");
-      if (index === 3) unavailable.setAttribute("aria-label", "Change percentage unavailable");
-      cell.appendChild(unavailable);
-      row.appendChild(cell);
+      if (value === null) {
+        const unavailable = document.createElement("span");
+        unavailable.className = "global-unavailable";
+        unavailable.textContent = "Unavailable";
+        cell.append(unavailable);
+      } else if (index === 0) {
+        const date = new Date(`${value}T12:00:00Z`);
+        cell.textContent = new Intl.DateTimeFormat("en-IN", {
+          day: "numeric",
+          month: "short",
+          year: "numeric",
+          timeZone: "UTC"
+        }).format(date);
+      } else {
+        const number = value.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        const formatted = index === 1
+          ? number
+          : index === 3
+            ? `${value > 0 ? "+" : ""}${value.toFixed(2)}%`
+            : `${value > 0 ? "+" : ""}${number}`;
+        cell.textContent = formatted;
+      }
+      row.append(cell);
     });
 
     const sourceCell = document.createElement("td");
-    const source = document.createElement("span");
+    const source = document.createElement(data && data.sourceUrl ? "a" : "span");
     source.className = "global-source";
-    source.textContent = "Use search links";
-    sourceCell.appendChild(source);
-    row.appendChild(sourceCell);
-    body.appendChild(row);
+    source.textContent = data ? data.source : "Use search links";
+    if (data && data.sourceUrl) {
+      source.href = data.sourceUrl;
+      source.target = "_blank";
+      source.rel = "noopener noreferrer";
+    }
+    sourceCell.append(source);
+    row.append(sourceCell);
+    body.append(row);
   });
+
+  document.querySelector(".close-date-note").textContent = closes.some(close => close.tradingDate)
+    ? "Trading date shown per index"
+    : "Last close · date unavailable";
+}
+
+function setGlobalCloseEntryStatus(message, stateName = "info") {
+  const status = document.getElementById("global-close-entry-status");
+  status.textContent = message;
+  status.dataset.state = stateName;
+}
+
+function saveGlobalMarketCloses(event) {
+  event.preventDefault();
+  try {
+    const closes = Array.from(document.querySelectorAll("[data-global-close-row]"), row => {
+      const read = name => row.querySelector(`[name="${name}"]`).value.trim();
+      const values = {
+        tradingDate: read("tradingDate"),
+        close: read("close"),
+        changePoints: read("changePoints"),
+        changePercent: read("changePercent"),
+        source: read("source"),
+        sourceUrl: read("sourceUrl")
+      };
+      if (Object.values(values).every(value => !value)) {
+        return {
+          index: row.dataset.globalCloseRow,
+          tradingDate: null,
+          close: null,
+          changePoints: null,
+          changePercent: null,
+          source: "Unavailable",
+          sourceUrl: null
+        };
+      }
+      const missing = Object.entries(values).find(([, value]) => !value);
+      if (missing) throw new Error(`${row.dataset.globalCloseRow}: complete all fields or leave the row blank.`);
+      const tradingDate = new Date(`${values.tradingDate}T00:00:00Z`);
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(values.tradingDate)
+        || Number.isNaN(tradingDate.getTime())
+        || tradingDate.toISOString().slice(0, 10) !== values.tradingDate) {
+        throw new Error(`${row.dataset.globalCloseRow}: enter a valid trading date.`);
+      }
+      const numericValues = ["close", "changePoints", "changePercent"].map(field => Number(values[field]));
+      if (numericValues.some(value => !Number.isFinite(value)) || numericValues[0] < 0) {
+        throw new Error(`${row.dataset.globalCloseRow}: enter valid numeric close and change values.`);
+      }
+      const sourceUrl = new URL(values.sourceUrl);
+      if (sourceUrl.protocol !== "https:" || sourceUrl.username || sourceUrl.password) {
+        throw new Error(`${row.dataset.globalCloseRow}: source URL must be a public HTTPS link.`);
+      }
+      return {
+        index: row.dataset.globalCloseRow,
+        tradingDate: values.tradingDate,
+        close: numericValues[0],
+        changePoints: numericValues[1],
+        changePercent: numericValues[2],
+        source: values.source,
+        sourceUrl: sourceUrl.href
+      };
+    });
+    if (closes.every(close => close.tradingDate === null)) {
+      throw new Error("Enter at least one verified global close before displaying the table.");
+    }
+    renderGlobalMarketCloses(closes);
+    document.getElementById("research-session").textContent = "Manual data entered · verify sources";
+    document.getElementById("research-footer-sources").textContent = "Manually entered Google research · verify each source";
+    document.getElementById("global-data-note").textContent = "Values were entered manually and have not been independently verified. Confirm each value and trading date using its source link.";
+    setResearchStatus(
+      "Global closes entered manually",
+      "The table reflects values you entered. This app does not fetch or independently verify Google results.",
+      "Manual data loaded",
+      "success"
+    );
+    setGlobalCloseEntryStatus("Closes displayed. Verify the source links, dates, and values.", "success");
+  } catch (error) {
+    setGlobalCloseEntryStatus(`Could not display closes: ${error.message}`, "error");
+  }
 }
 
 function renderResearchHeadlines(headlines) {
@@ -759,13 +871,13 @@ function formatResearchTimestamp(timestamp) {
 }
 
 function startGoogleResearch() {
-  const headlineSearchUrl = document.getElementById("google-headlines-search").href;
-  window.open(headlineSearchUrl, "_blank", "noopener,noreferrer");
+  const promptSearchUrl = document.getElementById("google-prompt-search").href;
+  window.open(promptSearchUrl, "_blank", "noopener,noreferrer");
   document.getElementById("research-updated").textContent = formatResearchTimestamp(Date.now());
   document.getElementById("research-session").textContent = "Google Search · manual review";
   setResearchStatus(
-    "Google headline search requested",
-    "Google results are not imported into this app. Verify headlines and global closes at their original publisher or exchange sources using the search links.",
+    "Google search requested",
+    "Google treats the prompt as search terms; it does not generate a brief. Verify results at their original sources, then enter verified global closes below.",
     "Google Search only",
     ""
   );
@@ -830,6 +942,7 @@ function init() {
   document.getElementById("notification-button").addEventListener("click", () => showToast("You’re all caught up."));
   document.getElementById("learn-more").addEventListener("click", () => showToast("FinSight helps you organize and preview your market scans."));
   document.getElementById("refresh-research").addEventListener("click", startGoogleResearch);
+  document.getElementById("global-close-form").addEventListener("submit", saveGlobalMarketCloses);
   document.querySelectorAll("#calculator-view input").forEach(input => input.addEventListener("input", renderActiveCalculator));
   document.querySelectorAll("[data-calculator-tab]").forEach((button, index, buttons) => {
     button.addEventListener("click", () => selectCalculatorTab(button.dataset.calculatorTab));

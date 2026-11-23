@@ -403,6 +403,7 @@
                 <p>Search results are for research only and may be incomplete or out of date.</p>
               </div>
               <div class="google-search-links">
+                <a id="google-prompt-search" href="https://www.google.com/search?q=latest+NSE+BSE+market+headlines+global+closes" target="_blank" rel="noopener noreferrer">Search full research request</a>
                 <a id="google-headlines-search" href="https://www.google.com/search?q=NSE+BSE+market+headlines+today" target="_blank" rel="noopener noreferrer">NSE/BSE headlines</a>
                 <a id="google-dow-search" href="https://www.google.com/search?q=Dow+Jones+previous+close+CNBC+AP" target="_blank" rel="noopener noreferrer">Dow Jones · CNBC/AP</a>
                 <a id="google-europe-search" href="https://www.google.com/search?q=DAX+CAC+40+previous+close+investingLive" target="_blank" rel="noopener noreferrer">DAX &amp; CAC 40 · investingLive</a>
@@ -441,7 +442,62 @@
                   <tbody id="global-closes-body"></tbody>
                 </table>
               </div>
-              <div class="global-data-note"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5m0-8h.01"/></svg> Global closes are not imported from Google. Verify trading dates, closes, and changes at the linked publisher or exchange.</div>
+              <details class="global-close-entry">
+                <summary>Enter closes verified in Google</summary>
+                <p>Google results are not imported automatically. Enter each market’s date, close, point and percent change, and source. Leave a row blank when data cannot be verified.</p>
+                <form id="global-close-form">
+                  <div class="global-close-inputs">
+                    <fieldset data-global-close-row="Dow Jones">
+                      <legend>Dow Jones</legend>
+                      <label>Trading date<input name="tradingDate" type="date"></label>
+                      <label>Close<input name="close" type="number" min="0" step="any"></label>
+                      <label>Change (pts)<input name="changePoints" type="number" step="any"></label>
+                      <label>Change (%)<input name="changePercent" type="number" step="any"></label>
+                      <label>Source<input name="source" type="text" maxlength="80" placeholder="CNBC/AP"></label>
+                      <label>Source URL<input name="sourceUrl" type="url" placeholder="https://..."></label>
+                    </fieldset>
+                    <fieldset data-global-close-row="DAX">
+                      <legend>DAX</legend>
+                      <label>Trading date<input name="tradingDate" type="date"></label>
+                      <label>Close<input name="close" type="number" min="0" step="any"></label>
+                      <label>Change (pts)<input name="changePoints" type="number" step="any"></label>
+                      <label>Change (%)<input name="changePercent" type="number" step="any"></label>
+                      <label>Source<input name="source" type="text" maxlength="80" placeholder="investingLive"></label>
+                      <label>Source URL<input name="sourceUrl" type="url" placeholder="https://..."></label>
+                    </fieldset>
+                    <fieldset data-global-close-row="CAC 40">
+                      <legend>CAC 40</legend>
+                      <label>Trading date<input name="tradingDate" type="date"></label>
+                      <label>Close<input name="close" type="number" min="0" step="any"></label>
+                      <label>Change (pts)<input name="changePoints" type="number" step="any"></label>
+                      <label>Change (%)<input name="changePercent" type="number" step="any"></label>
+                      <label>Source<input name="source" type="text" maxlength="80" placeholder="investingLive"></label>
+                      <label>Source URL<input name="sourceUrl" type="url" placeholder="https://..."></label>
+                    </fieldset>
+                    <fieldset data-global-close-row="Hang Seng">
+                      <legend>Hang Seng</legend>
+                      <label>Trading date<input name="tradingDate" type="date"></label>
+                      <label>Close<input name="close" type="number" min="0" step="any"></label>
+                      <label>Change (pts)<input name="changePoints" type="number" step="any"></label>
+                      <label>Change (%)<input name="changePercent" type="number" step="any"></label>
+                      <label>Source<input name="source" type="text" maxlength="80" placeholder="MarketSpeaker/CNBC"></label>
+                      <label>Source URL<input name="sourceUrl" type="url" placeholder="https://..."></label>
+                    </fieldset>
+                    <fieldset data-global-close-row="Nikkei 225">
+                      <legend>Nikkei 225</legend>
+                      <label>Trading date<input name="tradingDate" type="date"></label>
+                      <label>Close<input name="close" type="number" min="0" step="any"></label>
+                      <label>Change (pts)<input name="changePoints" type="number" step="any"></label>
+                      <label>Change (%)<input name="changePercent" type="number" step="any"></label>
+                      <label>Source<input name="source" type="text" maxlength="80" placeholder="MarketSpeaker/CNBC"></label>
+                      <label>Source URL<input name="sourceUrl" type="url" placeholder="https://..."></label>
+                    </fieldset>
+                  </div>
+                  <div class="global-close-actions"><button class="primary-button" type="submit">Display verified closes</button></div>
+                  <p class="global-close-entry-status" id="global-close-entry-status" role="status" aria-live="polite"></p>
+                </form>
+              </details>
+              <div class="global-data-note" id="global-data-note"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5m0-8h.01"/></svg> Global closes are not imported from Google. Verify trading dates, closes, and changes at the linked publisher or exchange.</div>
             </section>
 
             <footer class="research-footer">
