@@ -1,4 +1,7 @@
 const STORAGE_KEY = "finsight-setups-v1";
+const CLAUDE_CHAT_URL = "https://claude.ai/chat/ce2d8f9b-068a-4c15-bcc4-54c2c27cd95e";
+const RESEARCH_INDEX_NAMES = ["Dow Jones", "DAX", "CAC 40", "Hang Seng", "Nikkei 225"];
+const MARKET_RESEARCH_PROMPT = `You are my market research assistant. Brief me on the latest NSE/BSE session as a swing trader. 1) Top 5 market-moving headlines. For each: what happened in one line, facts only; sectors or stocks affected; impact on NIFTY — bullish / bearish / neutral. 2) A table of yesterday's global closes: Dow Jones, DAX, CAC 40, Hang Seng, Nikkei 225. State today's date and name your source for each headline. Under 300 words. Plain language. No hype, no buy or sell calls. Education only.`;
 
 const defaultSetups = [
   { id: "gfs", name: "GFS", range: "38-43", color: "blue" },
@@ -31,21 +34,8 @@ const state = {
   lastRunAt: "",
   activeCalculatorTab: "risk",
   cupLevel: null,
-  researchHeadlines: [],
-  researchFetchedAt: 0,
-  researchLastRequestAt: 0,
-  researchLoading: false
+  researchBrief: null
 };
-
-const researchSourceDomains = [
-  "indiainfoline.com",
-  "newsbytesapp.com",
-  "stockinvest.com",
-  "stockinvest.us",
-  "investinglive.com",
-  "leprivatebanker.com"
-];
-const researchRefreshCooldownMs = 60 * 1000;
 
 const setupGrid = document.getElementById("setup-grid");
 const sidebarSetups = document.getElementById("sidebar-setups");
@@ -622,115 +612,172 @@ function renderDailyMarketResearch() {
     timeZone: "Asia/Kolkata"
   }).format(new Date());
   document.getElementById("research-today").textContent = today;
-  document.getElementById("research-updated").textContent = "Not fetched";
+  document.getElementById("research-updated").textContent = "Not imported";
   document.getElementById("research-session").textContent = "Not verified";
-  document.getElementById("research-footer-sources").textContent = "Headlines: GDELT index · original publisher links";
+  document.getElementById("research-footer-sources").textContent = "Claude.ai response · verify the linked sources";
   renderResearchHeadlines([]);
+  renderGlobalMarketCloses([]);
+}
 
-  const indices = ["Dow Jones", "DAX", "CAC 40", "Hang Seng", "Nikkei 225"];
-  const body = document.getElementById("global-closes-body");
-  body.innerHTML = "";
-  indices.forEach(name => {
-    const row = document.createElement("tr");
-    const symbol = name.split(/\s+/).map(part => part[0]).join("").slice(0, 2);
-    const indexCell = document.createElement("td");
-    const nameWrap = document.createElement("span");
-    const mark = document.createElement("span");
-    nameWrap.className = "global-index-name";
-    mark.className = "global-index-mark";
-    mark.textContent = symbol;
-    nameWrap.append(mark, document.createTextNode(name));
-    indexCell.appendChild(nameWrap);
-    row.appendChild(indexCell);
+function isValidResearchDate(value) {
+  if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const date = new Date(`${value}T00:00:00Z`);
+  return !Number.isNaN(date.getTime()) && date.toISOString().slice(0, 10) === value;
+}
 
-    ["Unavailable", "Unavailable", "—", "—"].forEach((value, index) => {
-      const cell = document.createElement("td");
-      const unavailable = document.createElement("span");
-      unavailable.className = "global-unavailable";
-      unavailable.textContent = value;
-      if (index === 2) unavailable.setAttribute("aria-label", "Change in points unavailable");
-      if (index === 3) unavailable.setAttribute("aria-label", "Change percentage unavailable");
-      cell.appendChild(unavailable);
-      row.appendChild(cell);
-    });
+function formatResearchDate(value) {
+  const date = new Date(`${value}T12:00:00Z`);
+  return new Intl.DateTimeFormat("en-IN", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    timeZone: "UTC"
+  }).format(date);
+}
 
-    const sourceCell = document.createElement("td");
-    const source = document.createElement("span");
-    source.className = "global-source";
-    source.textContent = "Not connected";
-    sourceCell.appendChild(source);
-    row.appendChild(sourceCell);
-    body.appendChild(row);
+function normalizeResearchText(value, label) {
+  if (typeof value !== "string" || !value.trim()) throw new Error(`${label} must be a non-empty string.`);
+  return value.replace(/\s+/g, " ").trim();
+}
+
+function validateSourceUrl(value, label, allowNull = false) {
+  if (allowNull && value === null) return null;
+  if (typeof value !== "string") throw new Error(`${label} must be an HTTPS source URL.`);
+  let url;
+  try {
+    url = new URL(value);
+  } catch (error) {
+    throw new Error(`${label} is not a valid URL.`);
+  }
+  if (url.protocol !== "https:" || url.username || url.password) throw new Error(`${label} must be a public HTTPS URL.`);
+  return url.href;
+}
+
+function validateResearchTimestamp(value, label) {
+  if (value === null) return null;
+  if (typeof value !== "string" || !/(?:Z|[+-]\d{2}:\d{2})$/i.test(value)) {
+    throw new Error(`${label} must be an ISO timestamp with a timezone, or null.`);
+  }
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) throw new Error(`${label} is not a valid timestamp.`);
+  return date.toISOString();
+}
+
+function validateNullableNumber(value, label, minimum = -Infinity) {
+  if (value === null) return null;
+  if (typeof value !== "number" || !Number.isFinite(value) || value < minimum) {
+    throw new Error(`${label} must be a finite number or null.`);
+  }
+  return value;
+}
+
+function countResearchWords(brief) {
+  const text = [
+    brief.briefDate,
+    ...brief.headlines.flatMap(headline => [
+      headline.title,
+      headline.summary,
+      headline.affected,
+      headline.niftyImpact,
+      headline.source
+    ]),
+    ...brief.globalCloses.flatMap(index => [
+      index.index,
+      index.tradingDate || "Unavailable",
+      index.close === null ? "Unavailable" : index.close,
+      index.changePoints === null ? "Unavailable" : index.changePoints,
+      index.changePercent === null ? "Unavailable" : index.changePercent,
+      index.source
+    ])
+  ].join(" ");
+  return text.split(/\s+/).filter(Boolean).length;
+}
+
+function validateClaudeBrief(payload) {
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) throw new Error("The response must be a JSON object.");
+  if (!isValidResearchDate(payload.briefDate)) throw new Error("briefDate must use YYYY-MM-DD.");
+  if (!Array.isArray(payload.headlines) || payload.headlines.length > 5) throw new Error("headlines must contain up to five items.");
+  if (!Array.isArray(payload.globalCloses) || payload.globalCloses.length !== RESEARCH_INDEX_NAMES.length) {
+    throw new Error("globalCloses must include all five requested indexes.");
+  }
+
+  const headlines = payload.headlines.map((item, index) => {
+    if (!item || typeof item !== "object" || Array.isArray(item)) throw new Error(`Headline ${index + 1} must be an object.`);
+    const title = normalizeResearchText(item.title, `Headline ${index + 1} title`);
+    if (title.split(/\s+/).length > 25) throw new Error(`Headline ${index + 1} title must be 25 words or fewer.`);
+    const niftyImpact = normalizeResearchText(item.niftyImpact, `Headline ${index + 1} NIFTY impact`).toLowerCase();
+    if (!["bullish", "bearish", "neutral"].includes(niftyImpact)) throw new Error(`Headline ${index + 1} NIFTY impact must be bullish, bearish, or neutral.`);
+    return {
+      title,
+      summary: normalizeResearchText(item.summary, `Headline ${index + 1} summary`),
+      affected: normalizeResearchText(item.affected, `Headline ${index + 1} affected sectors/stocks`),
+      niftyImpact,
+      source: normalizeResearchText(item.source, `Headline ${index + 1} source`),
+      sourceUrl: validateSourceUrl(item.sourceUrl, `Headline ${index + 1} sourceUrl`),
+      publishedAt: validateResearchTimestamp(item.publishedAt, `Headline ${index + 1} publishedAt`)
+    };
   });
-}
 
-function parseResearchDate(value) {
-  if (typeof value !== "string") return null;
-  const compact = value.match(/^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})Z$/);
-  const date = compact
-    ? new Date(`${compact[1]}-${compact[2]}-${compact[3]}T${compact[4]}:${compact[5]}:${compact[6]}Z`)
-    : new Date(value);
-  return Number.isNaN(date.getTime()) ? null : date;
-}
-
-function getResearchSource(hostname) {
-  const domain = researchSourceDomains.find(sourceDomain => hostname === sourceDomain || hostname.endsWith(`.${sourceDomain}`));
-  if (!domain) return null;
-  const names = {
-    "indiainfoline.com": "India Infoline",
-    "newsbytesapp.com": "NewsBytes",
-    "stockinvest.com": "StockInvest",
-    "stockinvest.us": "StockInvest",
-    "investinglive.com": "InvestingLive",
-    "leprivatebanker.com": "LePrivateBanker"
-  };
-  return { domain, name: names[domain] };
-}
-
-function normalizeResearchArticles(articles) {
-  const now = Date.now();
-  const seenTitles = new Set();
-  const headlinePattern = /\b(?:stock|market|share|equity|nifty|sensex|nse|bse|invest(?:or|ment|ing)?|trading|finance|financial|bank|rbi|sebi|bond|ipo|earnings|quarter|profit|loss|index|fund|economic|economy|rupee|currency|oil|commodities|gdp|inflation)\b/i;
-  const disallowedPattern = /\b(?:buy(?:ing)?|sells?|holds?|targets?|crashes?|surges?|blockbusters?|soars?|plunges?|skyrockets?|baggers?|breakouts?|record[- ]breaking)\b/i;
-  const results = [];
-
-  articles.forEach(article => {
-    if (!article || typeof article.title !== "string" || typeof article.url !== "string") return;
-    const title = article.title.replace(/\s+/g, " ").trim();
-    const wordCount = title ? title.split(/\s+/).length : 0;
-    const indexedAt = parseResearchDate(article.seendate);
-    let url;
-    try {
-      url = new URL(article.url);
-    } catch (error) {
-      return;
+  const closeByName = new Map();
+  payload.globalCloses.forEach((item, index) => {
+    if (!item || typeof item !== "object" || Array.isArray(item)) throw new Error(`Global close ${index + 1} must be an object.`);
+    const name = normalizeResearchText(item.index, `Global close ${index + 1} index`);
+    if (!RESEARCH_INDEX_NAMES.includes(name) || closeByName.has(name)) throw new Error(`Unexpected or duplicate global index: ${name}.`);
+    if (item.tradingDate !== null && !isValidResearchDate(item.tradingDate)) {
+      throw new Error(`${name} tradingDate must use YYYY-MM-DD or null.`);
     }
-
-    const source = url.protocol === "https:" ? getResearchSource(url.hostname.toLowerCase()) : null;
-    if (!source || !indexedAt || now - indexedAt.getTime() > 24 * 60 * 60 * 1000 || indexedAt.getTime() > now + 5 * 60 * 1000) return;
-    if (wordCount > 25 || !headlinePattern.test(title) || disallowedPattern.test(title)) return;
-
-    const normalizedTitle = title.toLowerCase();
-    if (seenTitles.has(normalizedTitle)) return;
-    seenTitles.add(normalizedTitle);
-    results.push({ title, url: url.href, indexedAt, source: source.name });
+    const close = {
+      index: name,
+      tradingDate: item.tradingDate,
+      close: validateNullableNumber(item.close, `${name} close`, 0),
+      changePoints: validateNullableNumber(item.changePoints, `${name} changePoints`),
+      changePercent: validateNullableNumber(item.changePercent, `${name} changePercent`),
+      source: normalizeResearchText(item.source, `${name} source`),
+      sourceUrl: validateSourceUrl(item.sourceUrl, `${name} sourceUrl`, true)
+    };
+    const hasMarketValues = [close.close, close.changePoints, close.changePercent].some(value => value !== null);
+    if (hasMarketValues && (!close.tradingDate || !close.sourceUrl)) {
+      throw new Error(`${name} needs a trading date and source URL when market values are provided.`);
+    }
+    closeByName.set(name, close);
   });
 
-  return results.sort((first, second) => second.indexedAt - first.indexedAt).slice(0, 5);
+  if (RESEARCH_INDEX_NAMES.some(name => !closeByName.has(name))) throw new Error("Return one globalCloses item for every requested index.");
+  const brief = {
+    briefDate: payload.briefDate,
+    headlines,
+    globalCloses: RESEARCH_INDEX_NAMES.map(name => closeByName.get(name))
+  };
+  const wordCount = countResearchWords(brief);
+  if (wordCount > 300) throw new Error(`The imported brief is ${wordCount} words; reduce it to 300 or fewer.`);
+  return brief;
+}
+
+function parseClaudeBrief(text) {
+  const input = text.trim();
+  if (!input) throw new Error("Paste Claude's JSON response first.");
+  const fencedJson = input.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  let payload;
+  try {
+    payload = JSON.parse(fencedJson ? fencedJson[1].trim() : input);
+  } catch (error) {
+    throw new Error("Could not parse JSON. Copy the complete JSON object from Claude's response.");
+  }
+  return validateClaudeBrief(payload);
 }
 
 function renderResearchHeadlines(headlines) {
   const list = document.getElementById("headline-list");
   const empty = document.getElementById("headline-empty");
   const count = document.getElementById("headline-count");
-  const wordCount = headlines.reduce((total, headline) => total + headline.title.split(/\s+/).filter(Boolean).length, 0);
+  const wordCount = state.researchBrief ? countResearchWords(state.researchBrief) : 0;
 
   list.replaceChildren();
   list.hidden = headlines.length === 0;
   empty.hidden = headlines.length > 0;
   count.textContent = `${headlines.length} sourced`;
   document.getElementById("research-word-count").textContent = String(wordCount);
-  document.getElementById("research-footer-count").textContent = `Headline word count: ${wordCount} / 300`;
+  document.getElementById("research-footer-count").textContent = `Brief word count: ${wordCount} / 300`;
   document.querySelector(".headline-empty-count").textContent = `${headlines.length} of 5 eligible headlines`;
 
   headlines.forEach((headline, index) => {
@@ -745,24 +792,32 @@ function renderResearchHeadlines(headlines) {
     const source = document.createElement("span");
     source.className = "headline-source";
     source.textContent = headline.source;
-    const indexed = document.createElement("time");
-    indexed.className = "headline-time";
-    indexed.dateTime = headline.indexedAt.toISOString();
-    indexed.textContent = `Indexed ${new Intl.DateTimeFormat("en-IN", {
-      day: "numeric",
-      month: "short",
-      hour: "2-digit",
-      minute: "2-digit",
-      timeZone: "Asia/Kolkata"
-    }).format(headline.indexedAt)} IST`;
-    header.append(rank, source, indexed);
+    const published = document.createElement("time");
+    published.className = "headline-time";
+    if (headline.publishedAt) {
+      published.dateTime = headline.publishedAt;
+      published.textContent = `Published ${new Intl.DateTimeFormat("en-IN", {
+        day: "numeric",
+        month: "short",
+        hour: "2-digit",
+        minute: "2-digit",
+        timeZone: "Asia/Kolkata"
+      }).format(new Date(headline.publishedAt))} IST`;
+    } else {
+      published.textContent = "Publication time not supplied";
+    }
+    header.append(rank, source, published);
 
     const link = document.createElement("a");
     link.className = "headline-title";
-    link.href = headline.url;
+    link.href = headline.sourceUrl;
     link.target = "_blank";
     link.rel = "noopener noreferrer";
     link.textContent = headline.title;
+
+    const summary = document.createElement("p");
+    summary.className = "headline-summary";
+    summary.textContent = headline.summary;
 
     const assessments = document.createElement("div");
     assessments.className = "headline-assessments";
@@ -771,24 +826,80 @@ function renderResearchHeadlines(headlines) {
     const impactLabel = document.createElement("small");
     impactLabel.textContent = "NIFTY IMPACT";
     const impactTag = document.createElement("span");
-    impactTag.className = "impact-tag neutral";
-    impactTag.textContent = "Neutral";
-    const impactNote = document.createElement("p");
-    impactNote.textContent = "No directional effect inferred from the headline alone.";
-    impact.append(impactLabel, impactTag, impactNote);
+    impactTag.className = `impact-tag ${headline.niftyImpact}`;
+    impactTag.textContent = headline.niftyImpact;
+    impact.append(impactLabel, impactTag);
 
     const affected = document.createElement("div");
     affected.className = "headline-assessment";
     const affectedLabel = document.createElement("small");
     affectedLabel.textContent = "AFFECTED SECTORS / STOCKS";
     const affectedNote = document.createElement("p");
-    affectedNote.textContent = "Not identified in headline metadata.";
+    affectedNote.textContent = headline.affected;
     affected.append(affectedLabel, affectedNote);
 
     assessments.append(impact, affected);
-    card.append(header, link, assessments);
+    card.append(header, link, summary, assessments);
     list.append(card);
   });
+}
+
+function renderGlobalMarketCloses(closes) {
+  const closeByName = new Map(closes.map(item => [item.index, item]));
+  const body = document.getElementById("global-closes-body");
+  body.replaceChildren();
+  RESEARCH_INDEX_NAMES.forEach(name => {
+    const data = closeByName.get(name);
+    const row = document.createElement("tr");
+    const indexCell = document.createElement("td");
+    const nameWrap = document.createElement("span");
+    const mark = document.createElement("span");
+    nameWrap.className = "global-index-name";
+    mark.className = "global-index-mark";
+    mark.textContent = name.split(/\s+/).map(part => part[0]).join("").slice(0, 2);
+    nameWrap.append(mark, document.createTextNode(name));
+    indexCell.append(nameWrap);
+    row.append(indexCell);
+
+    const values = [
+      data && data.tradingDate ? formatResearchDate(data.tradingDate) : null,
+      data ? data.close : null,
+      data ? data.changePoints : null,
+      data ? data.changePercent : null
+    ];
+    values.forEach((value, valueIndex) => {
+      const cell = document.createElement("td");
+      if (value === null) {
+        const unavailable = document.createElement("span");
+        unavailable.className = "global-unavailable";
+        unavailable.textContent = "Unavailable";
+        cell.append(unavailable);
+      } else {
+        const formatted = valueIndex === 0
+          ? value
+          : valueIndex === 3
+            ? `${value > 0 ? "+" : ""}${value.toFixed(2)}%`
+            : `${value > 0 ? "+" : ""}${value.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+        cell.textContent = formatted;
+      }
+      row.append(cell);
+    });
+
+    const sourceCell = document.createElement("td");
+    const source = document.createElement(data && data.sourceUrl ? "a" : "span");
+    source.className = "global-source";
+    source.textContent = data ? data.source : "Unavailable";
+    if (data && data.sourceUrl) {
+      source.href = data.sourceUrl;
+      source.target = "_blank";
+      source.rel = "noopener noreferrer";
+    }
+    sourceCell.append(source);
+    row.append(sourceCell);
+    body.append(row);
+  });
+
+  document.querySelector(".close-date-note").textContent = "Trading date shown per index";
 }
 
 function setResearchStatus(title, message, status, alertType) {
@@ -809,79 +920,89 @@ function formatResearchTimestamp(timestamp) {
   }).format(new Date(timestamp)) + " IST";
 }
 
-async function loadDailyMarketResearch() {
-  if (state.researchLoading) return;
-  const now = Date.now();
-  const elapsedSinceRequest = now - state.researchLastRequestAt;
-  if (state.researchLastRequestAt && elapsedSinceRequest < researchRefreshCooldownMs) {
-    showToast(`Please wait ${Math.ceil((researchRefreshCooldownMs - elapsedSinceRequest) / 1000)} seconds before refreshing again.`);
-    return;
-  }
+function buildClaudeResearchPrompt() {
+  const example = {
+    briefDate: "YYYY-MM-DD",
+    headlines: [{
+      title: "Headline title",
+      summary: "One factual line.",
+      affected: "Sector or stock names",
+      niftyImpact: "bullish|bearish|neutral",
+      source: "Publisher name",
+      sourceUrl: "https://publisher.example/article",
+      publishedAt: "ISO-8601 timestamp or null"
+    }],
+    globalCloses: RESEARCH_INDEX_NAMES.map(index => ({
+      index,
+      tradingDate: "YYYY-MM-DD or null",
+      close: null,
+      changePoints: null,
+      changePercent: null,
+      source: "Source name or Unavailable",
+      sourceUrl: null
+    }))
+  };
+  return `${MARKET_RESEARCH_PROMPT}
 
-  state.researchLoading = true;
-  state.researchLastRequestAt = now;
-  const refreshButton = document.getElementById("refresh-research");
-  refreshButton.disabled = true;
+For global closes, prefer these sources: CNBC/AP for Dow Jones; investingLive for DAX and CAC 40; MarketSpeaker using CNBC data for Hang Seng and Nikkei 225. Include a direct HTTPS source URL for every reported headline and every available close. Use only verifiable recent information. If a date or value cannot be verified, use null and source "Unavailable"; never estimate or invent it.
+
+To let me import your answer, return only a compact JSON object matching this shape (no markdown fences). Use at most five headlines, and keep the total displayed text under 300 words:
+${JSON.stringify(example, null, 2)}`;
+}
+
+function setClaudeWorkflowStatus(message, stateName = "info") {
+  const status = document.getElementById("claude-workflow-status");
+  status.textContent = message;
+  status.dataset.state = stateName;
+}
+
+function startClaudeResearch() {
+  document.getElementById("claude-prompt").value = buildClaudeResearchPrompt();
+  document.getElementById("claude-workflow").hidden = false;
+  setClaudeWorkflowStatus("Copy the prompt, run it in Claude, then paste Claude's complete JSON response below.");
   setResearchStatus(
-    "Fetching publisher headlines",
-    "Checking recent articles from the selected publishers through the GDELT news index. Displayed times are index times, not verified publication times. Global closes remain unavailable.",
-    "Loading",
+    "Manual Claude research started",
+    "No data is fetched automatically. Review the cited sources and dates before importing Claude's response.",
+    "Awaiting Claude",
     "loading"
   );
+  window.open(CLAUDE_CHAT_URL, "_blank", "noopener,noreferrer");
+  document.getElementById("claude-workflow").scrollIntoView({ behavior: "smooth", block: "start" });
+}
 
-  const query = `(${researchSourceDomains.map(domain => `domain:${domain}`).join(" OR ")})`;
-  const params = new URLSearchParams({
-    query,
-    mode: "ArtList",
-    format: "json",
-    maxrecords: "50",
-    timespan: "24h",
-    sort: "DateDesc"
-  });
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 15000);
-
+async function copyClaudeResearchPrompt() {
+  const prompt = document.getElementById("claude-prompt");
   try {
-    const response = await fetch(`https://api.gdeltproject.org/api/v2/doc/doc?${params}`, { signal: controller.signal });
-    if (!response.ok) throw new Error(response.status === 429 ? "The news index is rate-limiting requests. Try again shortly." : `The news index returned HTTP ${response.status}.`);
-    const payload = await response.json();
-    if (!payload || !Array.isArray(payload.articles)) throw new Error("The news index returned an unexpected response.");
-
-    state.researchHeadlines = normalizeResearchArticles(payload.articles);
-    state.researchFetchedAt = Date.now();
-    renderResearchHeadlines(state.researchHeadlines);
-    document.getElementById("research-updated").textContent = formatResearchTimestamp(state.researchFetchedAt);
-    document.getElementById("research-session").textContent = "Last 24 hours · GDELT index time";
-    const count = state.researchHeadlines.length;
-    setResearchStatus(
-      count ? "Publisher headlines updated" : "No eligible headlines found",
-      count
-        ? `${count} recent headlines passed the source, GDELT index-time, and content checks. Publication time is not provided by this feed. Impact and affected stocks are not inferred. Global closes remain unavailable.`
-        : "No recent headlines passed the source, GDELT index-time, and content checks. Publication time is not provided by this feed. Global closes remain unavailable.",
-      count ? "Headlines available" : "No headlines",
-      count ? "success" : ""
-    );
+    await navigator.clipboard.writeText(prompt.value);
+    setClaudeWorkflowStatus("Prompt copied. Paste it into the Claude.ai tab.");
   } catch (error) {
-    console.error("Daily Market Research could not be refreshed.", error);
-    const hasPreviousHeadlines = state.researchHeadlines.length > 0 && state.researchFetchedAt > 0;
-    const detail = error.name === "AbortError" ? "The request timed out." : error.message;
-    if (hasPreviousHeadlines) {
-      renderResearchHeadlines(state.researchHeadlines);
-      document.getElementById("research-updated").textContent = formatResearchTimestamp(state.researchFetchedAt);
-    } else {
-      renderResearchHeadlines([]);
-      document.getElementById("research-updated").textContent = "Unavailable — no successful fetch";
-    }
+    prompt.focus();
+    prompt.select();
+    setClaudeWorkflowStatus("Clipboard access was unavailable. The prompt is selected; copy it manually.", "error");
+  }
+}
+
+function importClaudeResearch() {
+  try {
+    const brief = parseClaudeBrief(document.getElementById("claude-response").value);
+    state.researchBrief = brief;
+    renderResearchHeadlines(brief.headlines);
+    renderGlobalMarketCloses(brief.globalCloses);
+    const importedAt = Date.now();
+    document.getElementById("research-today").textContent = formatResearchDate(brief.briefDate);
+    document.getElementById("research-updated").textContent = formatResearchTimestamp(importedAt);
+    document.getElementById("research-session").textContent = `NSE/BSE session · ${formatResearchDate(brief.briefDate)}`;
+    document.getElementById("research-footer-sources").textContent = "Claude.ai response · verify each linked source";
+    document.getElementById("global-data-note").textContent = "Claude-generated values are not independently verified. Confirm closes and dates using the linked sources.";
     setResearchStatus(
-      hasPreviousHeadlines ? "Refresh failed — showing last fetched headlines" : "Headlines unavailable",
-      `${detail} ${hasPreviousHeadlines ? "The headlines shown are from the last successful fetch." : "No new headlines are shown."} Global closes remain unavailable.`,
-      hasPreviousHeadlines ? "Stale headlines" : "Data unavailable",
-      "error"
+      "Claude brief imported",
+      "Review each source link and trading date. Claude-generated headlines and market values are not independently verified.",
+      "Claude result loaded",
+      "success"
     );
-  } finally {
-    clearTimeout(timeout);
-    state.researchLoading = false;
-    refreshButton.disabled = false;
+    setClaudeWorkflowStatus("Brief imported. Verify the cited sources and values before relying on them.", "success");
+  } catch (error) {
+    setClaudeWorkflowStatus(`Import failed: ${error.message}`, "error");
   }
 }
 
@@ -943,7 +1064,9 @@ function init() {
   document.getElementById("help-button").addEventListener("click", () => showToast("Enter a saved setup name or use a quick-run chip to preview its filter and sample rows."));
   document.getElementById("notification-button").addEventListener("click", () => showToast("You’re all caught up."));
   document.getElementById("learn-more").addEventListener("click", () => showToast("FinSight helps you organize and preview your market scans."));
-  document.getElementById("refresh-research").addEventListener("click", () => loadDailyMarketResearch());
+  document.getElementById("refresh-research").addEventListener("click", startClaudeResearch);
+  document.getElementById("copy-claude-prompt").addEventListener("click", copyClaudeResearchPrompt);
+  document.getElementById("import-claude-brief").addEventListener("click", importClaudeResearch);
   document.querySelectorAll("#calculator-view input").forEach(input => input.addEventListener("input", renderActiveCalculator));
   document.querySelectorAll("[data-calculator-tab]").forEach((button, index, buttons) => {
     button.addEventListener("click", () => selectCalculatorTab(button.dataset.calculatorTab));
