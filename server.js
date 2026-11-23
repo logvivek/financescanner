@@ -378,7 +378,7 @@ function sendJson(response, statusCode, payload) {
 const server = http.createServer(async (request, response) => {
   response.setHeader("X-Content-Type-Options", "nosniff");
   response.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
-  const requestUrl = new URL(request.url, "http://localhost");
+  const requestUrl = new URL(request.url, "http://127.0.0.1");
 
   if (requestUrl.pathname === "/api/scan") {
     if (request.method !== "GET") {
@@ -431,7 +431,7 @@ const server = http.createServer(async (request, response) => {
 
 if (require.main === module) {
   server.listen(PORT, HOST, () => {
-    console.log(`FinSight is available at http://localhost:${PORT}`);
+    console.log(`FinSight is available at http://${HOST}:${PORT}`);
   });
 }
 

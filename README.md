@@ -9,7 +9,7 @@ npm install
 npm start
 ```
 
-Open `http://localhost:3000`. In Daily Market Research, click **Refresh headlines** to request up to five recent NSE/BSE-related articles from the Google News RSS feed. The app does not fetch until clicked.
+Open the server URL printed in the terminal. In Daily Market Research, click **Refresh headlines** to request up to five recent NSE/BSE-related articles from the Google News RSS feed. The app does not fetch until clicked.
 
 Every **Run scan** request fetches the current NSE F&O symbol list and requests two years of daily price history from Yahoo Finance. It calculates Wilder RSI(14) on daily closes and closes aggregated by week and month, then applies the selected setup. Yahoo Finance access is unofficial and its quotes may be delayed or unavailable; a successful request is not a guarantee of real-time prices. The scan reports its data timestamp and any symbols it could not fetch.
 

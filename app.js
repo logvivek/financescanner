@@ -308,7 +308,7 @@ async function runScan(id = state.activeSetupId) {
 
   try {
     if (location.protocol === "file:") {
-      throw new Error("Start the app with npm start and open http://localhost:3000 to fetch market data.");
+      throw new Error("Start the app with npm start and open the server URL printed in the terminal to fetch market data.");
     }
     const response = await fetch(`/api/scan?dailyRange=${encodeURIComponent(requestedRange)}`, {
       cache: "no-store",
@@ -1018,7 +1018,7 @@ async function loadDailyMarketResearch() {
   if (location.protocol === "file:") {
     setResearchStatus(
       "Research server required",
-      "Start the app with npm start and open http://localhost:3000 to fetch Google News RSS headlines.",
+      "Start the app with npm start and open the server URL printed in the terminal to fetch Google News RSS headlines.",
       "Server required",
       "error"
     );
