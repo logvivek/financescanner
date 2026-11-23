@@ -375,40 +375,53 @@
               <div>
                 <div class="eyebrow"><span class="eyebrow-line"></span> DAILYMARKETRESEARCH</div>
                 <h1>Daily Market Brief</h1>
-                <p class="heading-copy">Recent market reporting from selected publishers, with original-source links.</p>
+                <p class="heading-copy">Search Google for market headlines and global closes, then verify the source pages.</p>
               </div>
-              <button class="research-refresh" id="refresh-research" type="button" aria-label="Refresh market brief">
+              <button class="research-refresh" id="refresh-research" type="button" aria-label="Search Google for market headlines">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 7v5h-5M4 17v-5h5"/><path d="M6.2 9a7 7 0 0 1 11.6-2L20 12M4 12l2.2 5a7 7 0 0 0 11.6-2"/></svg>
-                Refresh brief
+                Search Google
               </button>
             </div>
 
             <div class="research-meta" aria-label="Brief timing">
               <div><small>TODAY · IST</small><strong id="research-today">—</strong></div>
               <span class="research-meta-divider"></span>
-              <div><small>LAST UPDATED</small><strong id="research-updated">No verified data</strong></div>
+              <div><small>LAST SEARCH</small><strong id="research-updated">Not searched</strong></div>
               <span class="research-meta-divider"></span>
-              <div><small>SESSION COVERED</small><strong id="research-session">Not verified</strong></div>
+              <div><small>DATA STATUS</small><strong id="research-session">Manual review</strong></div>
               <span class="research-unavailable" id="research-source-status" data-state="Pending"><span></span><b id="research-source-status-label">Pending</b></span>
             </div>
 
             <div class="research-alert" id="research-alert" role="status" aria-live="polite">
               <span class="research-alert-icon" aria-hidden="true">!</span>
-              <span><strong id="research-alert-title">Headlines not fetched</strong><small id="research-alert-message">Click Refresh brief to check available research sources. Nothing is fetched automatically. Global closes remain unavailable until a data feed is configured.</small></span>
+              <span><strong id="research-alert-title">Google Search is ready</strong><small id="research-alert-message">Search links open Google in a new tab. Results are not fetched into this app; verify each article and market value at its original source.</small></span>
             </div>
+
+            <section class="google-search-panel" aria-labelledby="google-search-title">
+              <div class="google-search-heading">
+                <h2 id="google-search-title">Google Search links</h2>
+                <p>Search results are for research only and may be incomplete or out of date.</p>
+              </div>
+              <div class="google-search-links">
+                <a id="google-headlines-search" href="https://www.google.com/search?q=NSE+BSE+market+headlines+today" target="_blank" rel="noopener noreferrer">NSE/BSE headlines</a>
+                <a id="google-dow-search" href="https://www.google.com/search?q=Dow+Jones+previous+close+CNBC+AP" target="_blank" rel="noopener noreferrer">Dow Jones · CNBC/AP</a>
+                <a id="google-europe-search" href="https://www.google.com/search?q=DAX+CAC+40+previous+close+investingLive" target="_blank" rel="noopener noreferrer">DAX &amp; CAC 40 · investingLive</a>
+                <a id="google-asia-search" href="https://www.google.com/search?q=Hang+Seng+Nikkei+225+previous+close+MarketSpeaker+CNBC" target="_blank" rel="noopener noreferrer">Hang Seng &amp; Nikkei · MarketSpeaker/CNBC</a>
+              </div>
+            </section>
 
             <section class="research-section" aria-labelledby="research-headlines-title">
               <div class="research-section-heading">
                 <div>
                   <div class="research-title-line"><span class="research-section-icon headline-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h14v16H5zM8 8h8M8 12h8M8 16h5"/></svg></span><h2 id="research-headlines-title">Top market headlines</h2><span class="headline-count" id="headline-count">0 sourced</span></div>
-                  <p>Recent articles from selected publishers via GDELT. Times show when the index saw each item, not verified publication times.</p>
+                  <p>Google does not provide imported headlines here. Open a search link above and verify reports at the original publisher.</p>
                 </div>
                 <span class="word-count"><strong id="research-word-count">0</strong> / 300 words</span>
               </div>
               <div class="headline-empty" id="headline-empty">
                 <span class="headline-empty-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h14v16H5zM8 8h8M8 12h5"/></svg></span>
-                <strong>No eligible headlines available</strong>
-                <p>Recent articles appear only when the publisher link, GDELT index time, and headline meet the display checks. No headlines are fabricated or filled in.</p>
+                <strong>No headlines imported</strong>
+                <p>Search results are not automatically copied into this brief. No headlines or market impacts are inferred.</p>
                 <span class="headline-empty-count">0 of 5 eligible headlines</span>
               </div>
               <div class="headline-list" id="headline-list" hidden></div>
@@ -428,12 +441,12 @@
                   <tbody id="global-closes-body"></tbody>
                 </table>
               </div>
-              <div class="global-data-note"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5m0-8h.01"/></svg> Global index data is unavailable until a licensed or exchange-published source is connected.</div>
+              <div class="global-data-note"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5m0-8h.01"/></svg> Global closes are not imported from Google. Verify trading dates, closes, and changes at the linked publisher or exchange.</div>
             </section>
 
             <footer class="research-footer">
               <div class="research-disclaimer"><span class="research-disclaimer-mark">i</span><strong>Education only. Not investment advice.</strong></div>
-              <div class="research-footer-meta"><span id="research-footer-sources">Headlines: GDELT index · original publisher links</span><span id="research-footer-count">Headline word count: 0 / 300</span></div>
+              <div class="research-footer-meta"><span id="research-footer-sources">Google Search links · verify original sources</span><span id="research-footer-count">Headline word count: 0 / 300</span></div>
             </footer>
           </section>
         </div>

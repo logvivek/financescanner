@@ -444,6 +444,13 @@ td { padding: 10px 13px; border-top: 1px solid #f0f2f5; color: #69758a; font-siz
 .research-alert.loading .research-alert-icon { border-color: #b7c8e5; }
 .research-alert.loading strong { color: #4a6794; }
 .research-alert.loading small { color: #7588a7; }
+.google-search-panel { display: grid; gap: 10px; padding: 14px; margin-top: 12px; border: 1px solid #e7ebf1; border-radius: 8px; background: #fff; }
+.google-search-heading h2 { margin: 0 0 4px; color: #303d52; font: 700 12px "Manrope", sans-serif; }
+.google-search-heading p { margin: 0; color: #929cab; font-size: 8px; line-height: 1.5; }
+.google-search-links { display: flex; flex-wrap: wrap; gap: 7px; }
+.google-search-links a { padding: 7px 9px; border: 1px solid #e4e9f0; border-radius: 5px; color: #526dc1; background: #fbfcff; font-size: 8px; font-weight: 600; text-decoration: none; }
+.google-search-links a:hover { border-color: #cbd6f5; background: #f5f7ff; }
+.google-search-links a:focus-visible { outline: 2px solid #7189d7; outline-offset: 2px; }
 .research-section { padding: 16px 17px; margin-top: 13px; border: 1px solid #e7ebf1; border-radius: 8px; background: #fff; }
 .research-section-heading { display: flex; align-items: center; justify-content: space-between; gap: 15px; }
 .research-title-line { display: flex; align-items: center; gap: 8px; margin-bottom: 5px; }
@@ -507,6 +514,7 @@ td { padding: 10px 13px; border-top: 1px solid #f0f2f5; color: #69758a; font-siz
   .close-date-note { align-self: flex-start; }
   .research-footer-meta { flex-direction: column; }
   .research-refresh { align-self: flex-start; }
+  .google-search-panel { padding: 11px; }
   .headline-card { padding: 10px; }
   .headline-assessments { grid-template-columns: 1fr; }
   .headline-time { font-size: 7px; }
