@@ -432,7 +432,7 @@
               <div class="research-section-heading">
                 <div>
                   <div class="research-title-line"><span class="research-section-icon global-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M3.5 12h17M12 3.5c2.2 2.3 3.3 5.1 3.3 8.5s-1.1 6.2-3.3 8.5C9.8 18.2 8.7 15.4 8.7 12s1.1-6.2 3.3-8.5z"/></svg></span><h2 id="global-closes-title">Global market closes</h2></div>
-                  <p>Click Search Google to prefill yesterday’s date in IST. Verify each market’s actual session date and closing values.</p>
+                  <p>Previous trading-day closes. Dates may differ by market holiday.</p>
                 </div>
                 <span class="close-date-note">Last close · date unavailable</span>
               </div>
@@ -442,7 +442,62 @@
                   <tbody id="global-closes-body"></tbody>
                 </table>
               </div>
-              <div class="global-data-note"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5m0-8h.01"/></svg> Only the previous calendar date is prefilled. Google results are not imported; verify actual closes, changes, and market dates at their sources.</div>
+              <details class="global-close-entry">
+                <summary>Enter closes verified in Google</summary>
+                <p>Google results are not imported automatically. Enter each market’s date, close, point and percent change, and source. Leave a row blank when data cannot be verified.</p>
+                <form id="global-close-form">
+                  <div class="global-close-inputs">
+                    <fieldset data-global-close-row="Dow Jones">
+                      <legend>Dow Jones</legend>
+                      <label>Trading date<input name="tradingDate" type="date"></label>
+                      <label>Close<input name="close" type="number" min="0" step="any"></label>
+                      <label>Change (pts)<input name="changePoints" type="number" step="any"></label>
+                      <label>Change (%)<input name="changePercent" type="number" step="any"></label>
+                      <label>Source<input name="source" type="text" maxlength="80" placeholder="CNBC/AP"></label>
+                      <label>Source URL<input name="sourceUrl" type="url" placeholder="https://..."></label>
+                    </fieldset>
+                    <fieldset data-global-close-row="DAX">
+                      <legend>DAX</legend>
+                      <label>Trading date<input name="tradingDate" type="date"></label>
+                      <label>Close<input name="close" type="number" min="0" step="any"></label>
+                      <label>Change (pts)<input name="changePoints" type="number" step="any"></label>
+                      <label>Change (%)<input name="changePercent" type="number" step="any"></label>
+                      <label>Source<input name="source" type="text" maxlength="80" placeholder="investingLive"></label>
+                      <label>Source URL<input name="sourceUrl" type="url" placeholder="https://..."></label>
+                    </fieldset>
+                    <fieldset data-global-close-row="CAC 40">
+                      <legend>CAC 40</legend>
+                      <label>Trading date<input name="tradingDate" type="date"></label>
+                      <label>Close<input name="close" type="number" min="0" step="any"></label>
+                      <label>Change (pts)<input name="changePoints" type="number" step="any"></label>
+                      <label>Change (%)<input name="changePercent" type="number" step="any"></label>
+                      <label>Source<input name="source" type="text" maxlength="80" placeholder="investingLive"></label>
+                      <label>Source URL<input name="sourceUrl" type="url" placeholder="https://..."></label>
+                    </fieldset>
+                    <fieldset data-global-close-row="Hang Seng">
+                      <legend>Hang Seng</legend>
+                      <label>Trading date<input name="tradingDate" type="date"></label>
+                      <label>Close<input name="close" type="number" min="0" step="any"></label>
+                      <label>Change (pts)<input name="changePoints" type="number" step="any"></label>
+                      <label>Change (%)<input name="changePercent" type="number" step="any"></label>
+                      <label>Source<input name="source" type="text" maxlength="80" placeholder="MarketSpeaker/CNBC"></label>
+                      <label>Source URL<input name="sourceUrl" type="url" placeholder="https://..."></label>
+                    </fieldset>
+                    <fieldset data-global-close-row="Nikkei 225">
+                      <legend>Nikkei 225</legend>
+                      <label>Trading date<input name="tradingDate" type="date"></label>
+                      <label>Close<input name="close" type="number" min="0" step="any"></label>
+                      <label>Change (pts)<input name="changePoints" type="number" step="any"></label>
+                      <label>Change (%)<input name="changePercent" type="number" step="any"></label>
+                      <label>Source<input name="source" type="text" maxlength="80" placeholder="MarketSpeaker/CNBC"></label>
+                      <label>Source URL<input name="sourceUrl" type="url" placeholder="https://..."></label>
+                    </fieldset>
+                  </div>
+                  <div class="global-close-actions"><button class="primary-button" type="submit">Display verified closes</button></div>
+                  <p class="global-close-entry-status" id="global-close-entry-status" role="status" aria-live="polite"></p>
+                </form>
+              </details>
+              <div class="global-data-note" id="global-data-note"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5m0-8h.01"/></svg> Global closes are not imported from Google. Verify trading dates, closes, and changes at the linked publisher or exchange.</div>
             </section>
 
             <footer class="research-footer">

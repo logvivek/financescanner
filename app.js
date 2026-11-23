@@ -636,28 +636,7 @@ function renderDailyMarketResearch() {
   renderGlobalMarketCloses([]);
 }
 
-function formatResearchDate(value) {
-  return new Intl.DateTimeFormat("en-IN", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-    timeZone: "UTC"
-  }).format(new Date(`${value}T12:00:00Z`));
-}
-
-function getYesterdayInIndia() {
-  const parts = new Intl.DateTimeFormat("en", {
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    timeZone: "Asia/Kolkata"
-  }).formatToParts(new Date());
-  const dateParts = Object.fromEntries(parts.map(part => [part.type, part.value]));
-  const yesterday = new Date(Date.UTC(Number(dateParts.year), Number(dateParts.month) - 1, Number(dateParts.day) - 1));
-  return yesterday.toISOString().slice(0, 10);
-}
-
-function renderGlobalMarketCloses(closes, dateNote = "Last close · date unavailable") {
+function renderGlobalMarketCloses(closes) {
   const closeByName = new Map(closes.map(close => [close.index, close]));
   const body = document.getElementById("global-closes-body");
   body.replaceChildren();
@@ -721,7 +700,84 @@ function renderGlobalMarketCloses(closes, dateNote = "Last close · date unavail
     body.append(row);
   });
 
-  document.querySelector(".close-date-note").textContent = dateNote;
+  document.querySelector(".close-date-note").textContent = closes.some(close => close.tradingDate)
+    ? "Trading date shown per index"
+    : "Last close · date unavailable";
+}
+
+function setGlobalCloseEntryStatus(message, stateName = "info") {
+  const status = document.getElementById("global-close-entry-status");
+  status.textContent = message;
+  status.dataset.state = stateName;
+}
+
+function saveGlobalMarketCloses(event) {
+  event.preventDefault();
+  try {
+    const closes = Array.from(document.querySelectorAll("[data-global-close-row]"), row => {
+      const read = name => row.querySelector(`[name="${name}"]`).value.trim();
+      const values = {
+        tradingDate: read("tradingDate"),
+        close: read("close"),
+        changePoints: read("changePoints"),
+        changePercent: read("changePercent"),
+        source: read("source"),
+        sourceUrl: read("sourceUrl")
+      };
+      if (Object.values(values).every(value => !value)) {
+        return {
+          index: row.dataset.globalCloseRow,
+          tradingDate: null,
+          close: null,
+          changePoints: null,
+          changePercent: null,
+          source: "Unavailable",
+          sourceUrl: null
+        };
+      }
+      const missing = Object.entries(values).find(([, value]) => !value);
+      if (missing) throw new Error(`${row.dataset.globalCloseRow}: complete all fields or leave the row blank.`);
+      const tradingDate = new Date(`${values.tradingDate}T00:00:00Z`);
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(values.tradingDate)
+        || Number.isNaN(tradingDate.getTime())
+        || tradingDate.toISOString().slice(0, 10) !== values.tradingDate) {
+        throw new Error(`${row.dataset.globalCloseRow}: enter a valid trading date.`);
+      }
+      const numericValues = ["close", "changePoints", "changePercent"].map(field => Number(values[field]));
+      if (numericValues.some(value => !Number.isFinite(value)) || numericValues[0] < 0) {
+        throw new Error(`${row.dataset.globalCloseRow}: enter valid numeric close and change values.`);
+      }
+      const sourceUrl = new URL(values.sourceUrl);
+      if (sourceUrl.protocol !== "https:" || sourceUrl.username || sourceUrl.password) {
+        throw new Error(`${row.dataset.globalCloseRow}: source URL must be a public HTTPS link.`);
+      }
+      return {
+        index: row.dataset.globalCloseRow,
+        tradingDate: values.tradingDate,
+        close: numericValues[0],
+        changePoints: numericValues[1],
+        changePercent: numericValues[2],
+        source: values.source,
+        sourceUrl: sourceUrl.href
+      };
+    });
+    if (closes.every(close => close.tradingDate === null)) {
+      throw new Error("Enter at least one verified global close before displaying the table.");
+    }
+    renderGlobalMarketCloses(closes);
+    document.getElementById("research-session").textContent = "Manual data entered · verify sources";
+    document.getElementById("research-footer-sources").textContent = "Manually entered Google research · verify each source";
+    document.getElementById("global-data-note").textContent = "Values were entered manually and have not been independently verified. Confirm each value and trading date using its source link.";
+    setResearchStatus(
+      "Global closes entered manually",
+      "The table reflects values you entered. This app does not fetch or independently verify Google results.",
+      "Manual data loaded",
+      "success"
+    );
+    setGlobalCloseEntryStatus("Closes displayed. Verify the source links, dates, and values.", "success");
+  } catch (error) {
+    setGlobalCloseEntryStatus(`Could not display closes: ${error.message}`, "error");
+  }
 }
 
 function renderResearchHeadlines(headlines) {
@@ -816,22 +872,12 @@ function formatResearchTimestamp(timestamp) {
 
 function startGoogleResearch() {
   const promptSearchUrl = document.getElementById("google-prompt-search").href;
-  const yesterday = getYesterdayInIndia();
-  renderGlobalMarketCloses(RESEARCH_INDEX_NAMES.map(index => ({
-    index,
-    tradingDate: yesterday,
-    close: null,
-    changePoints: null,
-    changePercent: null,
-    source: "Use search links",
-    sourceUrl: null
-  })), `Prefilled date · ${formatResearchDate(yesterday)}`);
   window.open(promptSearchUrl, "_blank", "noopener,noreferrer");
   document.getElementById("research-updated").textContent = formatResearchTimestamp(Date.now());
-  document.getElementById("research-session").textContent = `Date prefilled · ${formatResearchDate(yesterday)}`;
+  document.getElementById("research-session").textContent = "Google Search · manual review";
   setResearchStatus(
     "Google search requested",
-    "The trading-date cells show yesterday in IST (calendar date), not a verified market session. Google results are not imported; confirm each market's actual close and date at its source.",
+    "Google treats the prompt as search terms; it does not generate a brief. Verify results at their original sources, then enter verified global closes below.",
     "Google Search only",
     ""
   );
@@ -896,6 +942,7 @@ function init() {
   document.getElementById("notification-button").addEventListener("click", () => showToast("You’re all caught up."));
   document.getElementById("learn-more").addEventListener("click", () => showToast("FinSight helps you organize and preview your market scans."));
   document.getElementById("refresh-research").addEventListener("click", startGoogleResearch);
+  document.getElementById("global-close-form").addEventListener("submit", saveGlobalMarketCloses);
   document.querySelectorAll("#calculator-view input").forEach(input => input.addEventListener("input", renderActiveCalculator));
   document.querySelectorAll("[data-calculator-tab]").forEach((button, index, buttons) => {
     button.addEventListener("click", () => selectCalculatorTab(button.dataset.calculatorTab));
