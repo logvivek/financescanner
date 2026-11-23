@@ -375,11 +375,11 @@
               <div>
                 <div class="eyebrow"><span class="eyebrow-line"></span> DAILYMARKETRESEARCH</div>
                 <h1>Daily Market Brief</h1>
-                <p class="heading-copy">Search Google for market headlines and global closes, then verify the source pages.</p>
+                <p class="heading-copy">Fetch recent Google News headlines on demand and verify each article at its publisher.</p>
               </div>
-              <button class="research-refresh" id="refresh-research" type="button" aria-label="Search Google for market headlines">
+              <button class="research-refresh" id="refresh-research" type="button" aria-label="Fetch Google News headlines">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 7v5h-5M4 17v-5h5"/><path d="M6.2 9a7 7 0 0 1 11.6-2L20 12M4 12l2.2 5a7 7 0 0 0 11.6-2"/></svg>
-                Search Google
+                Refresh headlines
               </button>
             </div>
 
@@ -394,13 +394,13 @@
 
             <div class="research-alert" id="research-alert" role="status" aria-live="polite">
               <span class="research-alert-icon" aria-hidden="true">!</span>
-              <span><strong id="research-alert-title">Google Search is ready</strong><small id="research-alert-message">Search links open Google in a new tab. Results are not fetched into this app; verify each article and market value at its original source.</small></span>
+              <span><strong id="research-alert-title">Google News RSS is ready</strong><small id="research-alert-message">Click Refresh headlines to fetch recent matching articles. Titles, publishers, and dates are shown; affected sectors and NIFTY impact are not assessed.</small></span>
             </div>
 
             <section class="google-search-panel" aria-labelledby="google-search-title">
               <div class="google-search-heading">
                 <h2 id="google-search-title">Google Search links</h2>
-                <p>Search results are for research only and may be incomplete or out of date.</p>
+                <p>Google News RSS is for personal, non-commercial use. Feed results may be incomplete; verify each article at its publisher.</p>
               </div>
               <div class="google-search-links">
                 <a id="google-prompt-search" href="https://www.google.com/search?q=latest+NSE+BSE+market+headlines+global+closes" target="_blank" rel="noopener noreferrer">Search full research request</a>
@@ -415,14 +415,14 @@
               <div class="research-section-heading">
                 <div>
                   <div class="research-title-line"><span class="research-section-icon headline-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h14v16H5zM8 8h8M8 12h8M8 16h5"/></svg></span><h2 id="research-headlines-title">Top market headlines</h2><span class="headline-count" id="headline-count">0 sourced</span></div>
-                  <p>Google does not provide imported headlines here. Open a search link above and verify reports at the original publisher.</p>
+                  <p>Recent matching articles from Google News RSS. Source links lead through Google News; verify the article at its publisher.</p>
                 </div>
                 <span class="word-count"><strong id="research-word-count">0</strong> / 300 words</span>
               </div>
               <div class="headline-empty" id="headline-empty">
                 <span class="headline-empty-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h14v16H5zM8 8h8M8 12h5"/></svg></span>
-                <strong>No headlines imported</strong>
-                <p>Search results are not automatically copied into this brief. No headlines or market impacts are inferred.</p>
+                <strong>No headlines fetched</strong>
+                <p>Click Refresh headlines to search recent NSE/BSE coverage. RSS provides article metadata only; sectors and NIFTY impact are not assessed.</p>
                 <span class="headline-empty-count">0 of 5 eligible headlines</span>
               </div>
               <div class="headline-list" id="headline-list" hidden></div>

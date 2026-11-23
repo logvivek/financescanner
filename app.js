@@ -32,7 +32,10 @@ const state = {
   lastRunSetupId: null,
   lastRunAt: "",
   activeCalculatorTab: "risk",
-  cupLevel: null
+  cupLevel: null,
+  researchHeadlines: [],
+  researchFetchedAt: 0,
+  researchLoading: false
 };
 
 const setupGrid = document.getElementById("setup-grid");
@@ -610,9 +613,9 @@ function renderDailyMarketResearch() {
     timeZone: "Asia/Kolkata"
   }).format(new Date());
   document.getElementById("research-today").textContent = today;
-  document.getElementById("research-updated").textContent = "Not searched";
-  document.getElementById("research-session").textContent = "Manual review";
-  document.getElementById("research-footer-sources").textContent = "Google Search links · verify original sources";
+  document.getElementById("research-updated").textContent = "Not fetched";
+  document.getElementById("research-session").textContent = "Not searched";
+  document.getElementById("research-footer-sources").textContent = "Google News RSS · verify original publisher";
   const publisherSites = [
     "site:indiainfoline.com",
     "site:newsbytesapp.com",
@@ -806,17 +809,17 @@ function renderResearchHeadlines(headlines) {
     const source = document.createElement("span");
     source.className = "headline-source";
     source.textContent = headline.source;
-    const indexed = document.createElement("time");
-    indexed.className = "headline-time";
-    indexed.dateTime = headline.indexedAt.toISOString();
-    indexed.textContent = `Indexed ${new Intl.DateTimeFormat("en-IN", {
+    const published = document.createElement("time");
+    published.className = "headline-time";
+    published.dateTime = headline.publishedAt.toISOString();
+    published.textContent = `Published ${new Intl.DateTimeFormat("en-IN", {
       day: "numeric",
       month: "short",
       hour: "2-digit",
       minute: "2-digit",
       timeZone: "Asia/Kolkata"
-    }).format(headline.indexedAt)} IST`;
-    header.append(rank, source, indexed);
+    }).format(headline.publishedAt)} IST`;
+    header.append(rank, source, published);
 
     const link = document.createElement("a");
     link.className = "headline-title";
@@ -833,9 +836,9 @@ function renderResearchHeadlines(headlines) {
     impactLabel.textContent = "NIFTY IMPACT";
     const impactTag = document.createElement("span");
     impactTag.className = "impact-tag neutral";
-    impactTag.textContent = "Neutral";
+    impactTag.textContent = "Not assessed";
     const impactNote = document.createElement("p");
-    impactNote.textContent = "No directional effect inferred from the headline alone.";
+    impactNote.textContent = "Google News RSS does not assess NIFTY impact.";
     impact.append(impactLabel, impactTag, impactNote);
 
     const affected = document.createElement("div");
@@ -843,7 +846,7 @@ function renderResearchHeadlines(headlines) {
     const affectedLabel = document.createElement("small");
     affectedLabel.textContent = "AFFECTED SECTORS / STOCKS";
     const affectedNote = document.createElement("p");
-    affectedNote.textContent = "Not identified in headline metadata.";
+    affectedNote.textContent = "Not provided by Google News RSS.";
     affected.append(affectedLabel, affectedNote);
 
     assessments.append(impact, affected);
@@ -870,17 +873,107 @@ function formatResearchTimestamp(timestamp) {
   }).format(new Date(timestamp)) + " IST";
 }
 
-function startGoogleResearch() {
-  const promptSearchUrl = document.getElementById("google-prompt-search").href;
-  window.open(promptSearchUrl, "_blank", "noopener,noreferrer");
-  document.getElementById("research-updated").textContent = formatResearchTimestamp(Date.now());
-  document.getElementById("research-session").textContent = "Google Search · manual review";
+function normalizeGoogleNewsArticles(articles) {
+  if (!Array.isArray(articles)) throw new Error("The news service returned an unexpected response.");
+  const now = Date.now();
+  const seenTitles = new Set();
+  return articles.flatMap(article => {
+    if (!article || typeof article.title !== "string" || typeof article.source !== "string"
+      || typeof article.url !== "string" || typeof article.publishedAt !== "string") return [];
+    const title = article.title.replace(/\s+/g, " ").trim();
+    const source = article.source.replace(/\s+/g, " ").trim();
+    const publishedAt = new Date(article.publishedAt);
+    let url;
+    try {
+      url = new URL(article.url);
+    } catch (error) {
+      return [];
+    }
+    if (!title || !source || Number.isNaN(publishedAt.getTime())
+      || now - publishedAt.getTime() > 24 * 60 * 60 * 1000
+      || publishedAt.getTime() > now + 5 * 60 * 1000
+      || url.protocol !== "https:" || url.hostname !== "news.google.com"
+      || !url.pathname.startsWith("/rss/articles/")) return [];
+    const normalizedTitle = title.toLowerCase();
+    if (seenTitles.has(normalizedTitle)) return [];
+    seenTitles.add(normalizedTitle);
+    return [{ title, source, url: url.href, publishedAt }];
+  }).sort((first, second) => second.publishedAt - first.publishedAt).slice(0, 5);
+}
+
+async function loadDailyMarketResearch() {
+  if (state.researchLoading) return;
+  if (location.protocol === "file:") {
+    setResearchStatus(
+      "Research server required",
+      "Start the app with npm start and open http://localhost:3000 to fetch Google News RSS headlines.",
+      "Server required",
+      "error"
+    );
+    return;
+  }
+
+  state.researchLoading = true;
+  const refreshButton = document.getElementById("refresh-research");
+  refreshButton.disabled = true;
   setResearchStatus(
-    "Google search requested",
-    "Google treats the prompt as search terms; it does not generate a brief. Verify results at their original sources, then enter verified global closes below.",
-    "Google Search only",
-    ""
+    "Searching Google News RSS",
+    "Loading recent NSE/BSE market headlines. Google News RSS does not provide sector or NIFTY impact analysis.",
+    "Loading",
+    "loading"
   );
+
+  try {
+    const response = await fetch("/api/research", { signal: AbortSignal.timeout(15000) });
+    let payload;
+    try {
+      payload = await response.json();
+    } catch (error) {
+      throw new Error("The research endpoint did not return JSON. Run the app with npm start or configure its backend.");
+    }
+    if (!response.ok) {
+      throw new Error(payload && typeof payload.error === "string"
+        ? payload.error
+        : `The research service returned HTTP ${response.status}.`);
+    }
+    const headlines = normalizeGoogleNewsArticles(payload.articles);
+    const fetchedAt = Date.parse(payload.fetchedAt);
+    if (Number.isNaN(fetchedAt)) throw new Error("The research service returned an invalid fetch time.");
+
+    state.researchHeadlines = headlines;
+    state.researchFetchedAt = fetchedAt;
+    renderResearchHeadlines(headlines);
+    document.getElementById("research-updated").textContent = formatResearchTimestamp(fetchedAt);
+    document.getElementById("research-session").textContent = "Last 24 hours · Google News";
+    document.getElementById("research-footer-sources").textContent = "Google News RSS · verify each original publisher";
+    setResearchStatus(
+      headlines.length ? "Google News headlines updated" : "No recent headlines found",
+      headlines.length
+        ? `${headlines.length} recent headlines loaded from Google News RSS. Open source links to verify. Affected sectors and NIFTY impacts are not assessed.`
+        : "Google News RSS returned no eligible NSE/BSE headlines in the last 24 hours.",
+      headlines.length ? "Headlines available" : "No headlines",
+      headlines.length ? "success" : ""
+    );
+  } catch (error) {
+    console.error("Daily Market Research could not be refreshed.", error);
+    const hasPreviousHeadlines = state.researchHeadlines.length > 0 && state.researchFetchedAt > 0;
+    if (hasPreviousHeadlines) {
+      renderResearchHeadlines(state.researchHeadlines);
+      document.getElementById("research-updated").textContent = formatResearchTimestamp(state.researchFetchedAt);
+    } else {
+      renderResearchHeadlines([]);
+      document.getElementById("research-updated").textContent = "Unavailable — no successful fetch";
+    }
+    setResearchStatus(
+      hasPreviousHeadlines ? "Refresh failed — showing previous headlines" : "Headlines unavailable",
+      `${error.message} ${hasPreviousHeadlines ? "The displayed headlines are from the last successful fetch." : "No headlines were loaded."}`,
+      hasPreviousHeadlines ? "Stale headlines" : "Data unavailable",
+      "error"
+    );
+  } finally {
+    state.researchLoading = false;
+    refreshButton.disabled = false;
+  }
 }
 
 function selectCalculatorTab(tab) {
@@ -941,7 +1034,7 @@ function init() {
   document.getElementById("help-button").addEventListener("click", () => showToast("Enter a saved setup name or use a quick-run chip to preview its filter and sample rows."));
   document.getElementById("notification-button").addEventListener("click", () => showToast("You’re all caught up."));
   document.getElementById("learn-more").addEventListener("click", () => showToast("FinSight helps you organize and preview your market scans."));
-  document.getElementById("refresh-research").addEventListener("click", startGoogleResearch);
+  document.getElementById("refresh-research").addEventListener("click", loadDailyMarketResearch);
   document.getElementById("global-close-form").addEventListener("submit", saveGlobalMarketCloses);
   document.querySelectorAll("#calculator-view input").forEach(input => input.addEventListener("input", renderActiveCalculator));
   document.querySelectorAll("[data-calculator-tab]").forEach((button, index, buttons) => {
