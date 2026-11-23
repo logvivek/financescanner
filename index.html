@@ -375,7 +375,7 @@
               <div>
                 <div class="eyebrow"><span class="eyebrow-line"></span> DAILYMARKETRESEARCH</div>
                 <h1>Daily Market Brief</h1>
-                <p class="heading-copy">Prepare a research prompt for Claude.ai and import its cited result.</p>
+                <p class="heading-copy">Recent market reporting from selected publishers, with original-source links.</p>
               </div>
               <button class="research-refresh" id="refresh-research" type="button" aria-label="Refresh market brief">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 7v5h-5M4 17v-5h5"/><path d="M6.2 9a7 7 0 0 1 11.6-2L20 12M4 12l2.2 5a7 7 0 0 0 11.6-2"/></svg>
@@ -386,48 +386,29 @@
             <div class="research-meta" aria-label="Brief timing">
               <div><small>TODAY · IST</small><strong id="research-today">—</strong></div>
               <span class="research-meta-divider"></span>
-              <div><small>RESULT IMPORTED</small><strong id="research-updated">Not imported</strong></div>
+              <div><small>LAST UPDATED</small><strong id="research-updated">No verified data</strong></div>
               <span class="research-meta-divider"></span>
-              <div><small>BRIEF DATE</small><strong id="research-session">Not verified</strong></div>
-              <span class="research-unavailable" id="research-source-status" data-state="Pending"><span></span><b id="research-source-status-label">Not imported</b></span>
+              <div><small>SESSION COVERED</small><strong id="research-session">Not verified</strong></div>
+              <span class="research-unavailable" id="research-source-status" data-state="Pending"><span></span><b id="research-source-status-label">Pending</b></span>
             </div>
 
             <div class="research-alert" id="research-alert" role="status" aria-live="polite">
               <span class="research-alert-icon" aria-hidden="true">!</span>
-              <span><strong id="research-alert-title">Claude result not imported</strong><small id="research-alert-message">Click Refresh brief to prepare the prompt. Run it manually in Claude.ai, then paste its JSON response below. The app does not fetch from Claude or any market source.</small></span>
+              <span><strong id="research-alert-title">Headlines not fetched</strong><small id="research-alert-message">Click Refresh brief to check available research sources. Nothing is fetched automatically. Global closes remain unavailable until a data feed is configured.</small></span>
             </div>
-
-            <section class="claude-workflow" id="claude-workflow" aria-labelledby="claude-workflow-title" hidden>
-              <div class="claude-workflow-heading">
-                <div>
-                  <h2 id="claude-workflow-title">Run the prompt in Claude.ai</h2>
-                  <p>Copy the prompt, run it in Claude, then paste the complete JSON response here. Values are not independently verified.</p>
-                </div>
-                <a class="claude-open-link" href="https://claude.ai/chat/ce2d8f9b-068a-4c15-bcc4-54c2c27cd95e" target="_blank" rel="noopener noreferrer">Open Claude.ai</a>
-              </div>
-              <label for="claude-prompt">Research prompt</label>
-              <textarea id="claude-prompt" rows="8" readonly></textarea>
-              <button class="claude-action secondary" id="copy-claude-prompt" type="button">Copy prompt</button>
-              <label for="claude-response">Paste Claude's JSON response</label>
-              <textarea id="claude-response" rows="8" placeholder="Paste the complete JSON response from Claude here."></textarea>
-              <div class="claude-workflow-actions">
-                <button class="claude-action primary" id="import-claude-brief" type="button">Import brief</button>
-              </div>
-              <p class="claude-workflow-status" id="claude-workflow-status" role="status" aria-live="polite"></p>
-            </section>
 
             <section class="research-section" aria-labelledby="research-headlines-title">
               <div class="research-section-heading">
                 <div>
                   <div class="research-title-line"><span class="research-section-icon headline-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h14v16H5zM8 8h8M8 12h8M8 16h5"/></svg></span><h2 id="research-headlines-title">Top market headlines</h2><span class="headline-count" id="headline-count">0 sourced</span></div>
-                  <p>Claude-provided headlines and assessments. Open each source link to verify the report.</p>
+                  <p>Recent articles from selected publishers via GDELT. Times show when the index saw each item, not verified publication times.</p>
                 </div>
                 <span class="word-count"><strong id="research-word-count">0</strong> / 300 words</span>
               </div>
               <div class="headline-empty" id="headline-empty">
                 <span class="headline-empty-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h14v16H5zM8 8h8M8 12h5"/></svg></span>
-                <strong>No headlines imported</strong>
-                <p>Click Refresh brief to prepare the Claude prompt. No headlines or market values are generated by the app.</p>
+                <strong>No eligible headlines available</strong>
+                <p>Recent articles appear only when the publisher link, GDELT index time, and headline meet the display checks. No headlines are fabricated or filled in.</p>
                 <span class="headline-empty-count">0 of 5 eligible headlines</span>
               </div>
               <div class="headline-list" id="headline-list" hidden></div>
@@ -447,12 +428,12 @@
                   <tbody id="global-closes-body"></tbody>
                 </table>
               </div>
-              <div class="global-data-note" id="global-data-note"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5m0-8h.01"/></svg> Global closes will appear after a Claude result is imported; verify values and dates against source links.</div>
+              <div class="global-data-note"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5m0-8h.01"/></svg> Global index data is unavailable until a licensed or exchange-published source is connected.</div>
             </section>
 
             <footer class="research-footer">
               <div class="research-disclaimer"><span class="research-disclaimer-mark">i</span><strong>Education only. Not investment advice.</strong></div>
-              <div class="research-footer-meta"><span id="research-footer-sources">Claude.ai response · verify the linked sources</span><span id="research-footer-count">Brief word count: 0 / 300</span></div>
+              <div class="research-footer-meta"><span id="research-footer-sources">Headlines: GDELT index · original publisher links</span><span id="research-footer-count">Headline word count: 0 / 300</span></div>
             </footer>
           </section>
         </div>

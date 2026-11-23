@@ -425,8 +425,8 @@ td { padding: 10px 13px; border-top: 1px solid #f0f2f5; color: #69758a; font-siz
 .research-unavailable { display: inline-flex; align-items: center; gap: 6px; margin-left: auto; padding: 6px 8px; border-radius: 4px; color: #9b7236; background: #fff7e9; font-size: 8px; font-weight: 600; white-space: nowrap; }
 .research-unavailable span { width: 6px; height: 6px; border-radius: 50%; background: #d7a24f; }
 .research-unavailable b { font-weight: 600; }
-.research-unavailable[data-state="Claude result loaded"] { color: #397c64; background: #edf8f3; }
-.research-unavailable[data-state="Claude result loaded"] span { background: #53a985; }
+.research-unavailable[data-state="Headlines available"] { color: #397c64; background: #edf8f3; }
+.research-unavailable[data-state="Headlines available"] span { background: #53a985; }
 .research-alert { display: flex; align-items: flex-start; gap: 10px; padding: 12px 14px; margin-top: 11px; border: 1px solid #f0e2c8; border-radius: 7px; color: #987139; background: #fffaf1; }
 .research-alert-icon { width: 18px; height: 18px; display: grid; flex: 0 0 18px; place-items: center; border: 1px solid #dab875; border-radius: 50%; font-size: 10px; font-weight: 700; }
 .research-alert > span:last-child { display: grid; gap: 4px; }
@@ -444,22 +444,6 @@ td { padding: 10px 13px; border-top: 1px solid #f0f2f5; color: #69758a; font-siz
 .research-alert.loading .research-alert-icon { border-color: #b7c8e5; }
 .research-alert.loading strong { color: #4a6794; }
 .research-alert.loading small { color: #7588a7; }
-.claude-workflow[hidden] { display: none; }
-.claude-workflow { display: grid; gap: 9px; padding: 15px; margin-top: 12px; border: 1px solid #dfe6f2; border-radius: 8px; background: #fbfcff; }
-.claude-workflow-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
-.claude-workflow-heading h2 { margin: 0 0 5px; color: #303d52; font: 700 12px "Manrope", sans-serif; }
-.claude-workflow-heading p { max-width: 520px; margin: 0; color: #8792a2; font-size: 8px; line-height: 1.5; }
-.claude-open-link { flex: 0 0 auto; padding: 7px 9px; border: 1px solid #dce3f0; border-radius: 5px; color: #526dc1; background: #fff; font-size: 8px; font-weight: 700; text-decoration: none; }
-.claude-workflow label { margin-top: 2px; color: #657187; font-size: 8px; font-weight: 700; }
-.claude-workflow textarea { width: 100%; min-height: 86px; padding: 9px; border: 1px solid #e1e6ee; border-radius: 5px; color: #4d5a70; background: #fff; font: 8px/1.5 "DM Sans", sans-serif; resize: vertical; }
-.claude-workflow textarea:focus-visible { outline: 2px solid #7189d7; outline-offset: 1px; }
-.claude-action { width: fit-content; min-height: 29px; padding: 0 9px; border: 1px solid #dce3f0; border-radius: 5px; font-size: 8px; font-weight: 700; cursor: pointer; }
-.claude-action.secondary { color: #52637e; background: #fff; }
-.claude-action.primary { border-color: #536fc8; color: #fff; background: #5a76d0; }
-.claude-workflow-actions { display: flex; justify-content: flex-end; }
-.claude-workflow-status { min-height: 12px; margin: 0; color: #78859a; font-size: 8px; line-height: 1.5; }
-.claude-workflow-status[data-state="error"] { color: #9a5c55; }
-.claude-workflow-status[data-state="success"] { color: #397c64; }
 .research-section { padding: 16px 17px; margin-top: 13px; border: 1px solid #e7ebf1; border-radius: 8px; background: #fff; }
 .research-section-heading { display: flex; align-items: center; justify-content: space-between; gap: 15px; }
 .research-title-line { display: flex; align-items: center; gap: 8px; margin-bottom: 5px; }
@@ -488,15 +472,12 @@ td { padding: 10px 13px; border-top: 1px solid #f0f2f5; color: #69758a; font-siz
 .headline-title { display: block; margin: 9px 0 11px; color: #35445c; font-size: 11px; font-weight: 600; line-height: 1.55; text-decoration: none; }
 .headline-title:hover { color: #526dc1; text-decoration: underline; }
 .headline-title:focus-visible { outline: 2px solid #7189d7; outline-offset: 3px; }
-.headline-summary { margin: -5px 0 10px; color: #68758a; font-size: 9px; line-height: 1.5; }
 .headline-assessments { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; padding-top: 9px; border-top: 1px solid #f0f2f5; }
 .headline-assessment { display: grid; justify-items: start; align-content: start; gap: 5px; }
 .headline-assessment > small { color: #929cab; font-size: 7px; font-weight: 700; letter-spacing: .45px; }
 .headline-assessment > p { margin: 0; color: #8792a2; font-size: 8px; line-height: 1.45; }
 .impact-tag { padding: 3px 6px; border-radius: 4px; font-size: 7px; font-weight: 700; }
 .impact-tag.neutral { color: #6d7a8e; background: #f0f2f6; }
-.impact-tag.bullish { color: #397c64; background: #edf8f3; }
-.impact-tag.bearish { color: #9a5c55; background: #fff0ee; }
 .close-date-note { color: #929cab; font-size: 8px; white-space: nowrap; }
 .global-table-wrap { overflow-x: auto; margin-top: 13px; border: 1px solid #edf0f4; border-radius: 5px; }
 .global-closes-table { min-width: 670px; }
@@ -508,7 +489,6 @@ td { padding: 10px 13px; border-top: 1px solid #f0f2f5; color: #69758a; font-siz
 .global-index-mark { width: 21px; height: 21px; display: grid; place-items: center; border-radius: 5px; color: #7d8ca5; background: #f0f3f8; font-size: 7px; font-weight: 700; }
 .global-unavailable { color: #a0a9b5; font-style: italic; }
 .global-source { color: #a17941; font-size: 7px; }
-.global-source[href] { color: #526dc1; text-decoration: underline; }
 .global-data-note { display: flex; align-items: center; gap: 6px; padding-top: 10px; color: #9a8b70; font-size: 8px; }
 .global-data-note svg { width: 13px; flex: 0 0 13px; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; }
 .research-footer { display: grid; gap: 11px; padding: 13px 2px 0; }
@@ -527,9 +507,6 @@ td { padding: 10px 13px; border-top: 1px solid #f0f2f5; color: #69758a; font-siz
   .close-date-note { align-self: flex-start; }
   .research-footer-meta { flex-direction: column; }
   .research-refresh { align-self: flex-start; }
-  .claude-workflow { padding: 11px; }
-  .claude-workflow-heading { flex-direction: column; }
-  .claude-open-link { align-self: flex-start; }
   .headline-card { padding: 10px; }
   .headline-assessments { grid-template-columns: 1fr; }
   .headline-time { font-size: 7px; }
