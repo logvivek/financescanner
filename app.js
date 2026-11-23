@@ -235,7 +235,7 @@ function renderResults() {
   document.querySelector("#empty-results p").textContent = state.scanLoading
     ? "Fetching NSE F&O prices from Yahoo Finance and calculating RSI."
     : !setup ? "Add a setup to fetch market data and evaluate its RSI filters."
-      : !hasCurrentRun ? "Each scan fetches current Yahoo Finance prices and calculates RSI from historical closes."
+      : !hasCurrentRun ? "Run a setup to fetch the latest available Yahoo Finance data and evaluate its RSI filters."
       : state.showingChanges && !state.previousRows ? "Run the same setup again to compare it with the previous scan."
         : state.showingChanges ? "The latest scan returned the same matching stocks as the previous scan."
           : "Try another setup or review the filter above.";
@@ -280,6 +280,13 @@ function validateScanPayload(payload) {
     throw new Error("The market-data service returned an invalid scan response.");
   }
   return payload;
+}
+
+function getScanErrorMessage(error) {
+  if (error instanceof TypeError && /failed to fetch/i.test(error.message)) {
+    return "Could not connect to the market-data server. Start the app with npm start and open the server URL printed in the terminal.";
+  }
+  return error instanceof Error && error.message ? error.message : "The market scan failed.";
 }
 
 async function runScan(id = state.activeSetupId) {
@@ -342,10 +349,11 @@ async function runScan(id = state.activeSetupId) {
     document.getElementById("command-feedback").textContent = `${setup.name} scan complete: ${payload.matches.length} stocks matched. ${coverage} Source: Yahoo Finance; quotes may be delayed.`;
   } catch (error) {
     console.error("Market scan could not be completed.", error);
+    const message = getScanErrorMessage(error);
     const hasPreviousResults = state.lastRunSetupId === id && state.scanMeta;
     document.getElementById("command-feedback").textContent = hasPreviousResults
-      ? `${error.message} The last successful results remain visible, dated ${formatMarketTimestamp(state.scanMeta.asOf)}.`
-      : error.message;
+      ? `${message} The last successful results remain visible, dated ${formatMarketTimestamp(state.scanMeta.asOf)}.`
+      : message;
   } finally {
     state.scanLoading = false;
     renderSetups();
