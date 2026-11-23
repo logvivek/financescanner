@@ -30,8 +30,22 @@ const state = {
   lastRunSetupId: null,
   lastRunAt: "",
   activeCalculatorTab: "risk",
-  cupLevel: null
+  cupLevel: null,
+  researchHeadlines: [],
+  researchFetchedAt: 0,
+  researchLastRequestAt: 0,
+  researchLoading: false
 };
+
+const researchSourceDomains = [
+  "indiainfoline.com",
+  "newsbytesapp.com",
+  "stockinvest.com",
+  "stockinvest.us",
+  "investinglive.com",
+  "leprivatebanker.com"
+];
+const researchRefreshCooldownMs = 60 * 1000;
 
 const setupGrid = document.getElementById("setup-grid");
 const sidebarSetups = document.getElementById("sidebar-setups");
@@ -608,11 +622,10 @@ function renderDailyMarketResearch() {
     timeZone: "Asia/Kolkata"
   }).format(new Date());
   document.getElementById("research-today").textContent = today;
-  document.getElementById("research-updated").textContent = "Unavailable — no source feed";
+  document.getElementById("research-updated").textContent = "Not fetched";
   document.getElementById("research-session").textContent = "Not verified";
-  document.getElementById("headline-count").textContent = "0 verified";
-  document.getElementById("research-word-count").textContent = "0";
-  document.getElementById("research-footer-count").textContent = "Brief word count: 0 / 300";
+  document.getElementById("research-footer-sources").textContent = "Headlines: GDELT index · original publisher links";
+  renderResearchHeadlines([]);
 
   const indices = ["Dow Jones", "DAX", "CAC 40", "Hang Seng", "Nikkei 225"];
   const body = document.getElementById("global-closes-body");
@@ -649,6 +662,227 @@ function renderDailyMarketResearch() {
     row.appendChild(sourceCell);
     body.appendChild(row);
   });
+}
+
+function parseResearchDate(value) {
+  if (typeof value !== "string") return null;
+  const compact = value.match(/^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})Z$/);
+  const date = compact
+    ? new Date(`${compact[1]}-${compact[2]}-${compact[3]}T${compact[4]}:${compact[5]}:${compact[6]}Z`)
+    : new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function getResearchSource(hostname) {
+  const domain = researchSourceDomains.find(sourceDomain => hostname === sourceDomain || hostname.endsWith(`.${sourceDomain}`));
+  if (!domain) return null;
+  const names = {
+    "indiainfoline.com": "India Infoline",
+    "newsbytesapp.com": "NewsBytes",
+    "stockinvest.com": "StockInvest",
+    "stockinvest.us": "StockInvest",
+    "investinglive.com": "InvestingLive",
+    "leprivatebanker.com": "LePrivateBanker"
+  };
+  return { domain, name: names[domain] };
+}
+
+function normalizeResearchArticles(articles) {
+  const now = Date.now();
+  const seenTitles = new Set();
+  const headlinePattern = /\b(?:stock|market|share|equity|nifty|sensex|nse|bse|invest(?:or|ment|ing)?|trading|finance|financial|bank|rbi|sebi|bond|ipo|earnings|quarter|profit|loss|index|fund|economic|economy|rupee|currency|oil|commodities|gdp|inflation)\b/i;
+  const disallowedPattern = /\b(?:buy(?:ing)?|sells?|holds?|targets?|crashes?|surges?|blockbusters?|soars?|plunges?|skyrockets?|baggers?|breakouts?|record[- ]breaking)\b/i;
+  const results = [];
+
+  articles.forEach(article => {
+    if (!article || typeof article.title !== "string" || typeof article.url !== "string") return;
+    const title = article.title.replace(/\s+/g, " ").trim();
+    const wordCount = title ? title.split(/\s+/).length : 0;
+    const indexedAt = parseResearchDate(article.seendate);
+    let url;
+    try {
+      url = new URL(article.url);
+    } catch (error) {
+      return;
+    }
+
+    const source = url.protocol === "https:" ? getResearchSource(url.hostname.toLowerCase()) : null;
+    if (!source || !indexedAt || now - indexedAt.getTime() > 24 * 60 * 60 * 1000 || indexedAt.getTime() > now + 5 * 60 * 1000) return;
+    if (wordCount > 25 || !headlinePattern.test(title) || disallowedPattern.test(title)) return;
+
+    const normalizedTitle = title.toLowerCase();
+    if (seenTitles.has(normalizedTitle)) return;
+    seenTitles.add(normalizedTitle);
+    results.push({ title, url: url.href, indexedAt, source: source.name });
+  });
+
+  return results.sort((first, second) => second.indexedAt - first.indexedAt).slice(0, 5);
+}
+
+function renderResearchHeadlines(headlines) {
+  const list = document.getElementById("headline-list");
+  const empty = document.getElementById("headline-empty");
+  const count = document.getElementById("headline-count");
+  const wordCount = headlines.reduce((total, headline) => total + headline.title.split(/\s+/).filter(Boolean).length, 0);
+
+  list.replaceChildren();
+  list.hidden = headlines.length === 0;
+  empty.hidden = headlines.length > 0;
+  count.textContent = `${headlines.length} sourced`;
+  document.getElementById("research-word-count").textContent = String(wordCount);
+  document.getElementById("research-footer-count").textContent = `Headline word count: ${wordCount} / 300`;
+  document.querySelector(".headline-empty-count").textContent = `${headlines.length} of 5 eligible headlines`;
+
+  headlines.forEach((headline, index) => {
+    const card = document.createElement("article");
+    card.className = "headline-card";
+
+    const header = document.createElement("div");
+    header.className = "headline-card-header";
+    const rank = document.createElement("span");
+    rank.className = "headline-rank";
+    rank.textContent = String(index + 1).padStart(2, "0");
+    const source = document.createElement("span");
+    source.className = "headline-source";
+    source.textContent = headline.source;
+    const indexed = document.createElement("time");
+    indexed.className = "headline-time";
+    indexed.dateTime = headline.indexedAt.toISOString();
+    indexed.textContent = `Indexed ${new Intl.DateTimeFormat("en-IN", {
+      day: "numeric",
+      month: "short",
+      hour: "2-digit",
+      minute: "2-digit",
+      timeZone: "Asia/Kolkata"
+    }).format(headline.indexedAt)} IST`;
+    header.append(rank, source, indexed);
+
+    const link = document.createElement("a");
+    link.className = "headline-title";
+    link.href = headline.url;
+    link.target = "_blank";
+    link.rel = "noopener noreferrer";
+    link.textContent = headline.title;
+
+    const assessments = document.createElement("div");
+    assessments.className = "headline-assessments";
+    const impact = document.createElement("div");
+    impact.className = "headline-assessment";
+    const impactLabel = document.createElement("small");
+    impactLabel.textContent = "NIFTY IMPACT";
+    const impactTag = document.createElement("span");
+    impactTag.className = "impact-tag neutral";
+    impactTag.textContent = "Neutral";
+    const impactNote = document.createElement("p");
+    impactNote.textContent = "No directional effect inferred from the headline alone.";
+    impact.append(impactLabel, impactTag, impactNote);
+
+    const affected = document.createElement("div");
+    affected.className = "headline-assessment";
+    const affectedLabel = document.createElement("small");
+    affectedLabel.textContent = "AFFECTED SECTORS / STOCKS";
+    const affectedNote = document.createElement("p");
+    affectedNote.textContent = "Not identified in headline metadata.";
+    affected.append(affectedLabel, affectedNote);
+
+    assessments.append(impact, affected);
+    card.append(header, link, assessments);
+    list.append(card);
+  });
+}
+
+function setResearchStatus(title, message, status, alertType) {
+  document.getElementById("research-alert-title").textContent = title;
+  document.getElementById("research-alert-message").textContent = message;
+  document.getElementById("research-alert").className = `research-alert ${alertType || ""}`.trim();
+  document.getElementById("research-source-status").dataset.state = status;
+  document.getElementById("research-source-status-label").textContent = status;
+}
+
+function formatResearchTimestamp(timestamp) {
+  return new Intl.DateTimeFormat("en-IN", {
+    day: "numeric",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: "Asia/Kolkata"
+  }).format(new Date(timestamp)) + " IST";
+}
+
+async function loadDailyMarketResearch() {
+  if (state.researchLoading) return;
+  const now = Date.now();
+  const elapsedSinceRequest = now - state.researchLastRequestAt;
+  if (state.researchLastRequestAt && elapsedSinceRequest < researchRefreshCooldownMs) {
+    showToast(`Please wait ${Math.ceil((researchRefreshCooldownMs - elapsedSinceRequest) / 1000)} seconds before refreshing again.`);
+    return;
+  }
+
+  state.researchLoading = true;
+  state.researchLastRequestAt = now;
+  const refreshButton = document.getElementById("refresh-research");
+  refreshButton.disabled = true;
+  setResearchStatus(
+    "Fetching publisher headlines",
+    "Checking recent articles from the selected publishers through the GDELT news index. Displayed times are index times, not verified publication times. Global closes remain unavailable.",
+    "Loading",
+    "loading"
+  );
+
+  const query = `(${researchSourceDomains.map(domain => `domain:${domain}`).join(" OR ")})`;
+  const params = new URLSearchParams({
+    query,
+    mode: "ArtList",
+    format: "json",
+    maxrecords: "50",
+    timespan: "24h",
+    sort: "DateDesc"
+  });
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 15000);
+
+  try {
+    const response = await fetch(`https://api.gdeltproject.org/api/v2/doc/doc?${params}`, { signal: controller.signal });
+    if (!response.ok) throw new Error(response.status === 429 ? "The news index is rate-limiting requests. Try again shortly." : `The news index returned HTTP ${response.status}.`);
+    const payload = await response.json();
+    if (!payload || !Array.isArray(payload.articles)) throw new Error("The news index returned an unexpected response.");
+
+    state.researchHeadlines = normalizeResearchArticles(payload.articles);
+    state.researchFetchedAt = Date.now();
+    renderResearchHeadlines(state.researchHeadlines);
+    document.getElementById("research-updated").textContent = formatResearchTimestamp(state.researchFetchedAt);
+    document.getElementById("research-session").textContent = "Last 24 hours · GDELT index time";
+    const count = state.researchHeadlines.length;
+    setResearchStatus(
+      count ? "Publisher headlines updated" : "No eligible headlines found",
+      count
+        ? `${count} recent headlines passed the source, GDELT index-time, and content checks. Publication time is not provided by this feed. Impact and affected stocks are not inferred. Global closes remain unavailable.`
+        : "No recent headlines passed the source, GDELT index-time, and content checks. Publication time is not provided by this feed. Global closes remain unavailable.",
+      count ? "Headlines available" : "No headlines",
+      count ? "success" : ""
+    );
+  } catch (error) {
+    console.error("Daily Market Research could not be refreshed.", error);
+    const hasPreviousHeadlines = state.researchHeadlines.length > 0 && state.researchFetchedAt > 0;
+    const detail = error.name === "AbortError" ? "The request timed out." : error.message;
+    if (hasPreviousHeadlines) {
+      renderResearchHeadlines(state.researchHeadlines);
+      document.getElementById("research-updated").textContent = formatResearchTimestamp(state.researchFetchedAt);
+    } else {
+      renderResearchHeadlines([]);
+      document.getElementById("research-updated").textContent = "Unavailable — no successful fetch";
+    }
+    setResearchStatus(
+      hasPreviousHeadlines ? "Refresh failed — showing last fetched headlines" : "Headlines unavailable",
+      `${detail} ${hasPreviousHeadlines ? "The headlines shown are from the last successful fetch." : "No new headlines are shown."} Global closes remain unavailable.`,
+      hasPreviousHeadlines ? "Stale headlines" : "Data unavailable",
+      "error"
+    );
+  } finally {
+    clearTimeout(timeout);
+    state.researchLoading = false;
+    refreshButton.disabled = false;
+  }
 }
 
 function selectCalculatorTab(tab) {
@@ -709,7 +943,7 @@ function init() {
   document.getElementById("help-button").addEventListener("click", () => showToast("Enter a saved setup name or use a quick-run chip to preview its filter and sample rows."));
   document.getElementById("notification-button").addEventListener("click", () => showToast("You’re all caught up."));
   document.getElementById("learn-more").addEventListener("click", () => showToast("FinSight helps you organize and preview your market scans."));
-  document.getElementById("refresh-research").addEventListener("click", () => showToast("Brief refresh unavailable: no verified news or market-data source is connected."));
+  document.getElementById("refresh-research").addEventListener("click", () => loadDailyMarketResearch());
   document.querySelectorAll("#calculator-view input").forEach(input => input.addEventListener("input", renderActiveCalculator));
   document.querySelectorAll("[data-calculator-tab]").forEach((button, index, buttons) => {
     button.addEventListener("click", () => selectCalculatorTab(button.dataset.calculatorTab));

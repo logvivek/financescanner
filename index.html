@@ -375,7 +375,7 @@
               <div>
                 <div class="eyebrow"><span class="eyebrow-line"></span> DAILYMARKETRESEARCH</div>
                 <h1>Daily Market Brief</h1>
-                <p class="heading-copy">A factual, sourced snapshot of the latest market session.</p>
+                <p class="heading-copy">Recent market reporting from selected publishers, with original-source links.</p>
               </div>
               <button class="research-refresh" id="refresh-research" type="button" aria-label="Refresh market brief">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 7v5h-5M4 17v-5h5"/><path d="M6.2 9a7 7 0 0 1 11.6-2L20 12M4 12l2.2 5a7 7 0 0 0 11.6-2"/></svg>
@@ -389,27 +389,27 @@
               <div><small>LAST UPDATED</small><strong id="research-updated">No verified data</strong></div>
               <span class="research-meta-divider"></span>
               <div><small>SESSION COVERED</small><strong id="research-session">Not verified</strong></div>
-              <span class="research-unavailable"><span></span>Data unavailable</span>
+              <span class="research-unavailable" id="research-source-status" data-state="Pending"><span></span><b id="research-source-status-label">Pending</b></span>
             </div>
 
-            <div class="research-alert" role="status" aria-live="polite">
+            <div class="research-alert" id="research-alert" role="status" aria-live="polite">
               <span class="research-alert-icon" aria-hidden="true">!</span>
-              <span><strong>Brief unavailable</strong><small>No verified news or market-data source is connected. We won't show unverified headlines or stale closes.</small></span>
+              <span><strong id="research-alert-title">Headlines not fetched</strong><small id="research-alert-message">Click Refresh brief to check available research sources. Nothing is fetched automatically. Global closes remain unavailable until a data feed is configured.</small></span>
             </div>
 
             <section class="research-section" aria-labelledby="research-headlines-title">
               <div class="research-section-heading">
                 <div>
-                  <div class="research-title-line"><span class="research-section-icon headline-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h14v16H5zM8 8h8M8 12h8M8 16h5"/></svg></span><h2 id="research-headlines-title">Top market headlines</h2><span class="headline-count" id="headline-count">0 verified</span></div>
-                  <p>Ranked by breadth of potential NIFTY impact. Facts only, with a named source on every story.</p>
+                  <div class="research-title-line"><span class="research-section-icon headline-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h14v16H5zM8 8h8M8 12h8M8 16h5"/></svg></span><h2 id="research-headlines-title">Top market headlines</h2><span class="headline-count" id="headline-count">0 sourced</span></div>
+                  <p>Recent articles from selected publishers via GDELT. Times show when the index saw each item, not verified publication times.</p>
                 </div>
                 <span class="word-count"><strong id="research-word-count">0</strong> / 300 words</span>
               </div>
               <div class="headline-empty" id="headline-empty">
                 <span class="headline-empty-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h14v16H5zM8 8h8M8 12h5"/></svg></span>
-                <strong>No verified headlines available</strong>
-                <p>Stories will appear here only after a source and publication time are verified. No headlines are being padded into this brief.</p>
-                <span class="headline-empty-count">0 of 5 stories verified</span>
+                <strong>No eligible headlines available</strong>
+                <p>Recent articles appear only when the publisher link, GDELT index time, and headline meet the display checks. No headlines are fabricated or filled in.</p>
+                <span class="headline-empty-count">0 of 5 eligible headlines</span>
               </div>
               <div class="headline-list" id="headline-list" hidden></div>
             </section>
@@ -433,7 +433,7 @@
 
             <footer class="research-footer">
               <div class="research-disclaimer"><span class="research-disclaimer-mark">i</span><strong>Education only. Not investment advice.</strong></div>
-              <div class="research-footer-meta"><span>Sources: No verified sources connected</span><span id="research-footer-count">Brief word count: 0 / 300</span></div>
+              <div class="research-footer-meta"><span id="research-footer-sources">Headlines: GDELT index · original publisher links</span><span id="research-footer-count">Headline word count: 0 / 300</span></div>
             </footer>
           </section>
         </div>
