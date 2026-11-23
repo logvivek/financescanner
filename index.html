@@ -114,7 +114,7 @@
                 <span>QUICK RUN</span>
                 <button type="button" class="quick-chip" data-command="Scan GFS"><span class="chip-dot blue"></span> GFS</button>
                 <button type="button" class="quick-chip" data-command="Scan Advance GFS"><span class="chip-dot violet"></span> Advance GFS</button>
-                <button type="button" class="quick-chip" data-command="Changes today"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h15m-5-5 5 5-5 5"/></svg> Changes today</button>
+                <button type="button" class="quick-chip" data-command="Changes since last scan"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h15m-5-5 5 5-5 5"/></svg> Changes since last scan</button>
               </div>
               <div class="command-feedback" id="command-feedback" role="status" aria-live="polite"></div>
             </div>
@@ -132,8 +132,8 @@
             <section class="results-section" id="results-section" aria-labelledby="results-title">
               <div class="results-heading">
                 <div>
-                  <div class="results-title-row"><span class="live-dot"></span><h2 id="results-title">Latest scan results</h2><span class="demo-tag">DEMO DATA</span></div>
-                  <p id="results-subtitle">A clear view of what matched your setup.</p>
+                  <div class="results-title-row"><span class="live-dot"></span><h2 id="results-title">Latest scan results</h2></div>
+                  <p id="results-subtitle">Run a scan to fetch current NSE F&amp;O market data.</p>
                 </div>
                 <div class="results-actions">
                   <button class="secondary-button" type="button" id="changes-button">
@@ -160,20 +160,19 @@
                 </table>
                 <div id="empty-results" class="empty-state" hidden>
                   <span class="empty-icon">⌕</span>
-                  <strong>No stocks matched</strong>
-                  <p>Try another setup or review the filter above.</p>
+                  <strong>Run a scan to fetch market data</strong>
+                  <p>Each scan requests current Yahoo Finance prices and calculates RSI from historical closes.</p>
                 </div>
               </div>
               <div class="table-footer">
                 <span id="result-count"></span>
-                <span class="data-disclaimer"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5m0-8h.01"/></svg> Illustrative sample data only — not live market data.</span>
               </div>
               <div class="change-summary" id="change-summary" hidden></div>
             </section>
 
             <footer class="page-footer">
               <span>FinSight is a market-scanning tool, not investment advice.</span>
-              <span>Data shown is illustrative <span class="footer-divider">·</span> v1.0</span>
+              <span>Yahoo Finance quotes may be delayed <span class="footer-divider">·</span> v1.0</span>
             </footer>
           </section>
 

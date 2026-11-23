@@ -142,7 +142,6 @@ h1 { margin-bottom: 6px; font: 700 25px "Manrope", sans-serif; letter-spacing: -
 .results-title-row { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
 .results-title-row h2 { margin: 0; }
 .live-dot { width: 7px; height: 7px; border-radius: 50%; background: #44bd92; box-shadow: 0 0 0 3px #e9f8f2; }
-.demo-tag { padding: 3px 5px; border-radius: 3px; color: #a87935; background: #fff5e5; font-size: 7px; font-weight: 700; letter-spacing: .5px; }
 .results-actions { display: flex; gap: 7px; }
 .secondary-button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 29px; padding: 0 9px; border: 1px solid #e6eaf0; border-radius: 5px; color: #68758a; background: #fff; font-size: 9px; font-weight: 500; }
 .secondary-button:hover { border-color: #cad5f2; color: #5070cf; }
@@ -184,8 +183,6 @@ td { padding: 10px 13px; border-top: 1px solid #f0f2f5; color: #69758a; font-siz
 .empty-state strong { color: #46536a; font-size: 11px; }
 .empty-state p { margin: 4px 0 0; font-size: 9px; }
 .table-footer { min-height: 39px; display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 0 17px; border-top: 1px solid #edf0f4; color: #9aa3b1; font-size: 9px; }
-.data-disclaimer { display: inline-flex; align-items: center; gap: 5px; color: #a18a69; }
-.data-disclaimer svg { width: 12px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; }
 .change-summary { padding: 9px 17px; border-top: 1px solid #eef0f4; color: #718097; background: #fcfcfd; font-size: 9px; }
 .page-footer { display: flex; justify-content: space-between; gap: 15px; padding: 19px 2px 0; color: #a0a9b7; font-size: 9px; }
 .footer-divider { padding: 0 4px; color: #c0c6d0; }

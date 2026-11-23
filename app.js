@@ -7,25 +7,13 @@ const defaultSetups = [
   { id: "advance-gfs", name: "Advance GFS", range: "58-62", color: "violet" }
 ];
 
-const demoRows = {
-  gfs: [
-    { stock: "RELIANCE", monthly: 67.42, weekly: 62.18, daily: 40.12, change: "Continuing" },
-    { stock: "HDFCBANK", monthly: 64.81, weekly: 66.04, daily: 39.56, change: "New" },
-    { stock: "ICICIBANK", monthly: 71.36, weekly: 61.92, daily: 42.07, change: "Continuing" },
-    { stock: "SBIN", monthly: 63.18, weekly: 68.31, daily: 38.94, change: "New" },
-    { stock: "TATAMOTORS", monthly: 66.53, weekly: 60.75, daily: 41.28, change: "Continuing" }
-  ],
-  "advance-gfs": [
-    { stock: "INFY", monthly: 68.22, weekly: 64.73, daily: 60.34, change: "New" },
-    { stock: "LT", monthly: 72.16, weekly: 67.42, daily: 59.81, change: "Continuing" },
-    { stock: "AXISBANK", monthly: 63.91, weekly: 62.07, daily: 61.24, change: "Continuing" }
-  ]
-};
-
 const state = {
   setups: loadSetups(),
   activeSetupId: "gfs",
   currentRows: [],
+  previousRows: null,
+  scanMeta: null,
+  scanLoading: false,
   showingChanges: false,
   sortKey: "stock",
   sortDirection: 1,
@@ -121,7 +109,10 @@ function renderSetups() {
     setupGrid.appendChild(card);
   });
 
-  document.querySelectorAll("[data-run]").forEach(button => button.addEventListener("click", () => runScan(button.dataset.run)));
+  document.querySelectorAll("[data-run]").forEach(button => {
+    button.disabled = state.scanLoading;
+    button.addEventListener("click", () => runScan(button.dataset.run));
+  });
   document.querySelectorAll("[data-edit]").forEach(button => button.addEventListener("click", () => openSetupDialog(button.dataset.edit)));
   renderSavedList();
 }
@@ -143,30 +134,57 @@ function renderSavedList() {
       <div class="saved-row-actions"><button class="secondary-button" type="button" data-run="${escapeHTML(setup.id)}">Run scan →</button><button class="secondary-button" type="button" data-edit="${escapeHTML(setup.id)}">Edit</button></div>`;
     list.appendChild(row);
   });
-  list.querySelectorAll("[data-run]").forEach(button => button.addEventListener("click", () => runScan(button.dataset.run)));
+  list.querySelectorAll("[data-run]").forEach(button => {
+    button.disabled = state.scanLoading;
+    button.addEventListener("click", () => runScan(button.dataset.run));
+  });
   list.querySelectorAll("[data-edit]").forEach(button => button.addEventListener("click", () => openSetupDialog(button.dataset.edit)));
+}
+
+function getChangedRows() {
+  if (!state.previousRows) return [];
+  const previousSymbols = new Set(state.previousRows.map(row => row.stock));
+  const currentSymbols = new Set(state.currentRows.map(row => row.stock));
+  const added = state.currentRows
+    .filter(row => !previousSymbols.has(row.stock))
+    .map(row => ({ ...row, change: "New" }));
+  const dropped = state.previousRows
+    .filter(row => !currentSymbols.has(row.stock))
+    .map(row => ({ ...row, change: "Dropped" }));
+  return added.concat(dropped);
+}
+
+function formatMarketTimestamp(timestamp) {
+  return `${new Intl.DateTimeFormat("en-IN", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    timeZone: "Asia/Kolkata"
+  }).format(new Date(timestamp))} IST`;
 }
 
 function renderResults() {
   const setup = getSetup();
-  const sampleAvailable = Boolean(setup && Object.prototype.hasOwnProperty.call(demoRows, getSetupKey(setup)));
-  const allRows = sampleAvailable ? getRows(setup) : [];
-  const rows = state.showingChanges && sampleAvailable
-    ? allRows.filter(row => row.change !== "Continuing").concat([
-      { stock: "WIPRO", monthly: 62.8, weekly: 63.2, daily: setup && setup.range === "58-62" ? 57.4 : 44.1, change: "Dropped" }
-    ])
-    : allRows;
-  state.currentRows = rows.slice().sort((a, b) => {
+  const hasCurrentRun = Boolean(state.scanMeta && state.lastRunSetupId
+    && state.lastRunSetupId === state.activeSetupId);
+  const availableRows = hasCurrentRun ? state.currentRows : [];
+  const rows = state.showingChanges ? getChangedRows() : availableRows;
+  const sortedRows = rows.slice().sort((a, b) => {
     const left = a[state.sortKey];
     const right = b[state.sortKey];
     return (typeof left === "number" ? left - right : String(left).localeCompare(String(right))) * state.sortDirection;
   });
 
   document.getElementById("results-title").textContent = setup ? `${setup.name} scan results` : "Latest scan results";
-  document.getElementById("results-subtitle").textContent = setup ? `${setup.name} · NSE F&O stocks · illustrative preview` : "Create a setup to see scan results.";
-  const hasCurrentRun = state.lastRunSetupId === state.activeSetupId;
+  document.getElementById("results-subtitle").textContent = hasCurrentRun && state.scanMeta
+    ? `${setup.name} · NSE F&O stocks · ${state.scanMeta.source} · ${state.scanMeta.fetchedCount}/${state.scanMeta.totalSymbols} symbols fetched`
+    : setup ? `${setup.name} · NSE F&O stocks · run a scan to fetch current prices` : "Create a setup to run a scan.";
   document.getElementById("run-time").textContent = hasCurrentRun ? state.lastRunAt : "—";
-  document.getElementById("data-time").textContent = hasCurrentRun ? "Demo only — no live feed" : "No live run — demo only";
+  document.getElementById("data-time").textContent = hasCurrentRun && state.scanMeta
+    ? formatMarketTimestamp(state.scanMeta.asOf)
+    : state.scanLoading ? "Fetching current data…" : "Not fetched";
   document.getElementById("filter-summary").textContent = setup
     ? `Monthly RSI(14) > 60 · Weekly RSI(14) > 60 · ${rangeText(setup)}`
     : "No filter selected";
@@ -193,7 +211,7 @@ function renderResults() {
   }));
 
   resultBody.innerHTML = "";
-  state.currentRows.forEach((row, index) => {
+  sortedRows.forEach((row, index) => {
     const tr = document.createElement("tr");
     const initials = row.stock.slice(0, 2);
     tr.innerHTML = `
@@ -205,29 +223,42 @@ function renderResults() {
       <td><span class="match-badge">${row.change === "Dropped" ? "Exited" : "Matched"}</span></td>`;
     resultBody.appendChild(tr);
   });
-  const isEmpty = !state.currentRows.length;
+  const isEmpty = !sortedRows.length;
   document.getElementById("empty-results").hidden = !isEmpty;
   document.getElementById("results-table").hidden = isEmpty;
-  document.querySelector("#empty-results strong").textContent = sampleAvailable ? "No stocks matched" : "Demo results unavailable";
-  document.querySelector("#empty-results p").textContent = sampleAvailable
-    ? "Try another setup or review the filter above."
-    : "No sample dataset is available for this setup, and no live data provider is connected.";
-  document.getElementById("result-count").textContent = sampleAvailable
-    ? `${state.currentRows.length} ${state.currentRows.length === 1 ? "stock" : "stocks"} ${state.showingChanges ? "in changes preview" : "matched"}`
-    : "Demo preview unavailable";
+  document.querySelector("#empty-results strong").textContent = state.scanLoading
+    ? "Fetching current market data"
+    : !setup ? "Create a setup to run a scan"
+      : !hasCurrentRun ? "Run a scan to fetch market data"
+      : state.showingChanges && !state.previousRows ? "No previous scan to compare"
+        : state.showingChanges ? "No changes since the previous scan" : "No stocks matched";
+  document.querySelector("#empty-results p").textContent = state.scanLoading
+    ? "Fetching NSE F&O prices from Yahoo Finance and calculating RSI."
+    : !setup ? "Add a setup to fetch market data and evaluate its RSI filters."
+      : !hasCurrentRun ? "Each scan fetches current Yahoo Finance prices and calculates RSI from historical closes."
+      : state.showingChanges && !state.previousRows ? "Run the same setup again to compare it with the previous scan."
+        : state.showingChanges ? "The latest scan returned the same matching stocks as the previous scan."
+          : "Try another setup or review the filter above.";
+  document.getElementById("result-count").textContent = hasCurrentRun
+    ? `${sortedRows.length} ${state.showingChanges ? "changes" : `${sortedRows.length === 1 ? "stock" : "stocks"} matched`}`
+    : "No live results yet";
   document.getElementById("change-summary").hidden = !state.showingChanges;
-  document.getElementById("change-summary").textContent = "Changes preview: New and dropped rows are illustrative and are not calculated against live or prior-run data.";
-}
-
-function getRows(setup) {
-  const key = getSetupKey(setup);
-  return demoRows[key] || [];
+  document.getElementById("change-summary").textContent = state.previousRows
+    ? "Changes compare the latest successful scan with the previous run of this setup."
+    : "Run the same setup twice to see new and dropped matches.";
 }
 
 function selectSetup(id, refreshResults = false) {
   if (!state.setups.some(setup => setup.id === id)) return;
   state.activeSetupId = id;
   state.showingChanges = false;
+  if (state.lastRunSetupId !== id) {
+    state.currentRows = [];
+    state.previousRows = null;
+    state.scanMeta = null;
+    state.lastRunSetupId = null;
+    state.lastRunAt = "";
+  }
   renderSetups();
   renderResults();
   if (refreshResults) {
@@ -235,26 +266,92 @@ function selectSetup(id, refreshResults = false) {
   }
 }
 
-function runScan(id = state.activeSetupId) {
+function validateScanPayload(payload) {
+  const validRow = row => row && typeof row.stock === "string" && row.stock
+    && ["monthly", "weekly", "daily"].every(key => Number.isFinite(row[key]) && row[key] >= 0 && row[key] <= 100);
+  if (!payload || payload.source !== "Yahoo Finance" || !Array.isArray(payload.matches)
+    || !payload.matches.every(validRow)
+    || !Number.isInteger(payload.totalSymbols) || !Number.isInteger(payload.fetchedCount)
+    || !Number.isInteger(payload.unavailableCount)
+    || payload.totalSymbols <= 0 || payload.fetchedCount <= 0
+    || payload.fetchedCount > payload.totalSymbols
+    || payload.unavailableCount !== payload.totalSymbols - payload.fetchedCount
+    || !Number.isFinite(Date.parse(payload.fetchedAt)) || !Number.isFinite(Date.parse(payload.asOf))) {
+    throw new Error("The market-data service returned an invalid scan response.");
+  }
+  return payload;
+}
+
+async function runScan(id = state.activeSetupId) {
+  if (state.scanLoading) return;
   const setup = state.setups.find(item => item.id === id);
   if (!setup) {
     showToast("Create a setup before running a scan.");
     return;
   }
+  const requestedRange = setup.range;
   state.activeSetupId = id;
   state.showingChanges = false;
+  if (state.lastRunSetupId !== id) {
+    state.currentRows = [];
+    state.previousRows = null;
+    state.scanMeta = null;
+    state.lastRunSetupId = null;
+    state.lastRunAt = "";
+  }
+  state.scanLoading = true;
   renderSetups();
   renderResults();
-  const now = new Date();
-  const timeOptions = { hour: "numeric", minute: "2-digit", timeZone: "Asia/Kolkata", timeZoneName: "short" };
-  state.lastRunSetupId = id;
-  state.lastRunAt = now.toLocaleString("en-IN", { day: "2-digit", month: "short", year: "numeric", ...timeOptions });
-  document.getElementById("run-time").textContent = state.lastRunAt;
-  document.getElementById("data-time").textContent = "Demo only — no live feed";
-  document.getElementById("command-feedback").textContent = getRows(setup).length
-    ? `${setup.name} filter previewed. No live market data provider is connected, so these rows are illustrative only.`
-    : `${setup.name} is saved, but no sample results are available. No live market data provider is connected.`;
+  document.querySelector("#command-form .run-button").disabled = true;
+  document.getElementById("command-feedback").textContent = `Fetching current NSE F&O market data from Yahoo Finance for ${setup.name}…`;
   document.getElementById("results-section").scrollIntoView({ behavior: "smooth", block: "nearest" });
+
+  try {
+    if (location.protocol === "file:") {
+      throw new Error("Start the app with npm start and open http://localhost:3000 to fetch market data.");
+    }
+    const response = await fetch(`/api/scan?dailyRange=${encodeURIComponent(requestedRange)}`, {
+      cache: "no-store",
+      signal: AbortSignal.timeout(120000)
+    });
+    let payload;
+    try {
+      payload = await response.json();
+    } catch (error) {
+      throw new Error("The market-data service did not return JSON. Start the app with npm start and try again.");
+    }
+    if (!response.ok) {
+      throw new Error(payload && typeof payload.error === "string"
+        ? payload.error
+        : `The market-data service returned HTTP ${response.status}.`);
+    }
+
+    payload = validateScanPayload(payload);
+    const latestSetup = state.setups.find(item => item.id === id);
+    if (!latestSetup || latestSetup.range !== requestedRange) {
+      throw new Error("The setup changed while the scan was running. Run it again to use the current filters.");
+    }
+    state.previousRows = state.lastRunSetupId === id ? state.currentRows.map(row => ({ ...row })) : null;
+    state.currentRows = payload.matches;
+    state.scanMeta = payload;
+    state.lastRunSetupId = id;
+    state.lastRunAt = formatMarketTimestamp(payload.fetchedAt);
+    const coverage = payload.unavailableCount
+      ? `${payload.fetchedCount} of ${payload.totalSymbols} symbols fetched; ${payload.unavailableCount} unavailable.`
+      : `${payload.fetchedCount} symbols fetched.`;
+    document.getElementById("command-feedback").textContent = `${setup.name} scan complete: ${payload.matches.length} stocks matched. ${coverage} Source: Yahoo Finance; quotes may be delayed.`;
+  } catch (error) {
+    console.error("Market scan could not be completed.", error);
+    const hasPreviousResults = state.lastRunSetupId === id && state.scanMeta;
+    document.getElementById("command-feedback").textContent = hasPreviousResults
+      ? `${error.message} The last successful results remain visible, dated ${formatMarketTimestamp(state.scanMeta.asOf)}.`
+      : error.message;
+  } finally {
+    state.scanLoading = false;
+    renderSetups();
+    renderResults();
+    document.querySelector("#command-form .run-button").disabled = false;
+  }
 }
 
 function handleCommand(value) {
@@ -266,7 +363,9 @@ function handleCommand(value) {
   }
   if (/changes/i.test(command)) {
     toggleChanges();
-    document.getElementById("command-feedback").textContent = "Showing an illustrative changes preview. No previous live run is available for comparison.";
+    document.getElementById("command-feedback").textContent = state.previousRows
+      ? "Showing stocks added to or dropped from the previous successful scan of this setup."
+      : "Run the same setup twice to compare live scan results.";
     document.getElementById("results-section").scrollIntoView({ behavior: "smooth", block: "nearest" });
     return;
   }
@@ -309,6 +408,9 @@ function deleteSetup() {
   if (state.lastRunSetupId === editingId) {
     state.lastRunSetupId = null;
     state.lastRunAt = "";
+    state.currentRows = [];
+    state.previousRows = null;
+    state.scanMeta = null;
   }
   editingId = null;
   persistSetups();
@@ -330,8 +432,17 @@ function saveSetup(event) {
     return;
   }
   if (editingId) {
+    const previousSetup = state.setups.find(setup => setup.id === editingId);
     state.setups = state.setups.map(setup => setup.id === editingId ? { ...setup, name, range, color: range === "58-62" ? "violet" : "blue" } : setup);
     state.activeSetupId = editingId;
+    if (previousSetup && previousSetup.range !== range) {
+      state.currentRows = [];
+      state.previousRows = null;
+      state.scanMeta = null;
+      state.lastRunSetupId = null;
+      state.lastRunAt = "";
+      state.showingChanges = false;
+    }
   } else {
     const id = `setup-${Date.now()}`;
     state.setups.push({ id, name, range, color: range === "58-62" ? "violet" : "blue" });
@@ -346,14 +457,15 @@ function saveSetup(event) {
 }
 
 function exportCsv() {
-  if (!state.currentRows.length) {
+  const rows = state.showingChanges ? getChangedRows() : state.currentRows;
+  if (!rows.length) {
     showToast("There are no rows to export.");
     return;
   }
   const headers = ["Stock", "Monthly RSI 14", "Weekly RSI 14", "Daily RSI 14"];
   if (state.showingChanges) headers.push("Change");
   headers.push("Status");
-  const csvRows = state.currentRows.map(row => [
+  const csvRows = rows.map(row => [
     row.stock,
     row.monthly.toFixed(2),
     row.weekly.toFixed(2),
@@ -366,7 +478,7 @@ function exportCsv() {
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
-  link.download = `${getSetupKey(getSetup()) || "scan"}-demo-results.csv`;
+  link.download = `${getSetupKey(getSetup()) || "scan"}-results.csv`;
   link.click();
   URL.revokeObjectURL(url);
 }
@@ -1031,7 +1143,7 @@ function init() {
       ? "Schedule preview enabled for this session only. No runs will be delivered without a connected service."
       : "Schedule is currently off.";
   });
-  document.getElementById("help-button").addEventListener("click", () => showToast("Enter a saved setup name or use a quick-run chip to preview its filter and sample rows."));
+  document.getElementById("help-button").addEventListener("click", () => showToast("Run a saved setup to fetch current Yahoo Finance data and evaluate its RSI filters."));
   document.getElementById("notification-button").addEventListener("click", () => showToast("You’re all caught up."));
   document.getElementById("learn-more").addEventListener("click", () => showToast("FinSight helps you organize and preview your market scans."));
   document.getElementById("refresh-research").addEventListener("click", loadDailyMarketResearch);
