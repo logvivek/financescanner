@@ -35,6 +35,14 @@
             <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 7v5l3.5 2"/></svg>
             <span>Schedule</span><span class="nav-dot"></span>
           </button>
+          <button class="nav-item" type="button" data-view="calculator">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M8 7h8M8 11h2m4 0h2m-8 4h2m4 0h2m-8 4h2m4 0h2"/></svg>
+            <span>Trade calculator</span>
+          </button>
+          <button class="nav-item" type="button" data-view="daily-market-research">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h14v16H5zM8 8h8M8 12h8M8 16h5"/></svg>
+            <span>Daily Market Research</span>
+          </button>
         </nav>
 
         <div class="sidebar-divider"></div>
@@ -187,6 +195,246 @@
               <p class="schedule-note"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5m0-8h.01"/></svg> Exchange holidays are skipped. Scheduled delivery is a prototype preview and is not connected to a live data service.</p>
               <div class="schedule-feedback" id="schedule-feedback" role="status" aria-live="polite">Schedule is currently off.</div>
             </div>
+          </section>
+
+          <section class="view-panel calculator-view" id="calculator-view" hidden>
+            <div class="page-heading compact-heading calculator-heading">
+              <div>
+                <div class="eyebrow"><span class="eyebrow-line"></span> PLAN YOUR POSITION</div>
+                <h1>Trade calculator</h1>
+                <p class="heading-copy">Size your position and check your rules before you act.</p>
+              </div>
+              <span class="calculator-disclaimer">Planning tool · Not investment advice</span>
+            </div>
+
+            <section class="capital-card" aria-label="Capital and risk settings">
+              <div class="capital-card-heading">
+                <span class="capital-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16v13H4zM4 7l2-3h12l2 3M4 11h16"/><circle cx="16" cy="15" r="1.5"/></svg></span>
+                <span><strong>Risk settings</strong><small>Shared across all calculator tabs</small></span>
+              </div>
+              <div class="capital-fields">
+                <label class="calculator-field" for="calc-capital">
+                  <span>Capital <small>₹</small></span>
+                  <input id="calc-capital" type="number" min="0" step="any" value="100000" inputmode="decimal" aria-describedby="calc-capital-error">
+                  <small class="field-error" id="calc-capital-error"></small>
+                </label>
+                <label class="calculator-field risk-percent-field" for="calc-risk-percent">
+                  <span>Risk per trade <small>%</small></span>
+                  <input id="calc-risk-percent" type="number" min="0" step="any" value="1" inputmode="decimal" aria-describedby="calc-risk-error">
+                  <small class="field-error" id="calc-risk-error"></small>
+                </label>
+                <div class="risk-budget" aria-live="polite">
+                  <span>RISK BUDGET</span>
+                  <strong id="calc-risk-budget">₹1,000.00</strong>
+                  <small id="calc-risk-budget-note">1% of ₹1,00,000.00</small>
+                </div>
+              </div>
+            </section>
+
+            <div class="calculator-tabs" role="tablist" aria-label="Trade calculator mode">
+              <button class="calculator-tab active" type="button" role="tab" id="tab-risk" aria-selected="true" aria-controls="panel-risk" data-calculator-tab="risk">Risk</button>
+              <button class="calculator-tab" type="button" role="tab" id="tab-value-buy" aria-selected="false" aria-controls="panel-value-buy" data-calculator-tab="value-buy">Value Buy</button>
+              <button class="calculator-tab" type="button" role="tab" id="tab-cup-pattern" aria-selected="false" aria-controls="panel-cup-pattern" data-calculator-tab="cup-pattern">Cup Pattern</button>
+            </div>
+
+            <section class="calculator-panel" id="panel-risk" role="tabpanel" aria-labelledby="tab-risk">
+              <div class="calculator-panel-heading">
+                <div><h2>Risk &amp; reward</h2><p>Enter your levels to calculate position size instantly.</p></div>
+                <span class="long-trade-note">Long trade sizing</span>
+              </div>
+              <div class="calculator-input-grid three-columns">
+                <label class="calculator-field" for="risk-entry">
+                  <span>Entry price <small>₹</small></span>
+                  <input id="risk-entry" type="number" min="0" step="any" placeholder="e.g. 100" inputmode="decimal">
+                  <small class="field-error" id="risk-entry-error"></small>
+                </label>
+                <label class="calculator-field" for="risk-stop">
+                  <span>Stop-loss <small>₹</small></span>
+                  <input id="risk-stop" type="number" min="0" step="any" placeholder="e.g. 95" inputmode="decimal">
+                  <small class="field-error" id="risk-stop-error"></small>
+                </label>
+                <label class="calculator-field" for="risk-target">
+                  <span>Target <small>₹</small></span>
+                  <input id="risk-target" type="number" min="0" step="any" placeholder="e.g. 120" inputmode="decimal">
+                  <small class="field-error" id="risk-target-error"></small>
+                </label>
+              </div>
+              <div class="calculator-output-grid" id="risk-results" aria-live="polite" hidden>
+                <article class="output-card"><span>RISK PER SHARE</span><strong id="risk-per-share">—</strong><small>Entry − stop-loss</small></article>
+                <article class="output-card"><span>POSITION QUANTITY</span><strong id="risk-quantity">—</strong><small>Rounded down to whole shares</small></article>
+                <article class="output-card"><span>RUPEE RISK</span><strong id="risk-amount">—</strong><small>Quantity × risk per share</small></article>
+                <article class="output-card"><span>RUPEE REWARD</span><strong id="reward-amount">—</strong><small>Quantity × reward per share</small></article>
+                <article class="output-card rr-output-card"><span>REWARD : RISK</span><strong id="risk-reward-ratio">—</strong><small>Reward per share ÷ risk per share</small></article>
+              </div>
+              <div class="calculator-warning" id="risk-warning" role="status" hidden></div>
+              <div class="calculator-empty" id="risk-empty">Enter entry, stop-loss and target to see your position size.</div>
+            </section>
+
+            <section class="calculator-panel" id="panel-value-buy" role="tabpanel" aria-labelledby="tab-value-buy" hidden>
+              <div class="calculator-panel-heading">
+                <div><h2>Value Buy rule check</h2><p>All four rules must be met for a TRADE verdict.</p></div>
+                <span class="long-trade-note">Rule checklist</span>
+              </div>
+              <div class="calculator-input-grid value-buy-grid">
+                <label class="calculator-field" for="value-monthly-rsi">
+                  <span>Monthly RSI</span>
+                  <input id="value-monthly-rsi" type="number" min="0" step="any" placeholder="40" inputmode="decimal">
+                  <small class="field-error" id="value-monthly-rsi-error"></small>
+                </label>
+                <label class="calculator-field" for="value-entry">
+                  <span>Entry price <small>₹</small></span>
+                  <input id="value-entry" type="number" min="0" step="any" placeholder="Enter price" inputmode="decimal">
+                  <small class="field-error" id="value-entry-error"></small>
+                </label>
+                <label class="calculator-field" for="value-confirm-low">
+                  <span>Confirmation candle low <small>₹</small></span>
+                  <input id="value-confirm-low" type="number" min="0" step="any" placeholder="Enter price" inputmode="decimal">
+                  <small class="field-error" id="value-confirm-low-error"></small>
+                </label>
+                <label class="calculator-field" for="value-stop">
+                  <span>Stop-loss <small>₹</small></span>
+                  <input id="value-stop" type="number" min="0" step="any" placeholder="Enter price" inputmode="decimal">
+                  <small class="field-error" id="value-stop-error"></small>
+                </label>
+                <label class="calculator-field" for="value-target">
+                  <span>Target <small>₹</small></span>
+                  <input id="value-target" type="number" min="0" step="any" placeholder="Enter price" inputmode="decimal">
+                  <small class="field-error" id="value-target-error"></small>
+                </label>
+              </div>
+              <label class="confirmation-check" for="value-weekly-confirmation">
+                <input id="value-weekly-confirmation" type="checkbox">
+                <span class="confirmation-check-box" aria-hidden="true"></span>
+                <span><strong>Green weekly candle crossed previous weekly high</strong><small>Check this only when the weekly confirmation condition is met.</small></span>
+              </label>
+              <div class="value-buy-summary" id="value-buy-summary" hidden aria-live="polite">
+                <div class="calculator-output-grid compact-output-grid">
+                  <article class="output-card"><span>RISK PER SHARE</span><strong id="value-risk-per-share">—</strong></article>
+                  <article class="output-card"><span>REWARD PER SHARE</span><strong id="value-reward-per-share">—</strong></article>
+                  <article class="output-card"><span>REWARD : RISK</span><strong id="value-risk-reward">—</strong></article>
+                  <article class="output-card"><span>POSITION QUANTITY</span><strong id="value-quantity">—</strong></article>
+                </div>
+              </div>
+              <div class="checklist-card">
+                <div class="checklist-heading"><h3>Rule checklist</h3><span>4 checks</span></div>
+                <div class="checklist-row" id="check-rsi"><span class="check-status">Not met</span><span><strong>Monthly RSI = 40</strong><small>Monthly RSI must equal 40.</small></span></div>
+                <div class="checklist-row" id="check-weekly"><span class="check-status">Not met</span><span><strong>Weekly confirmation</strong><small>Green weekly candle must cross the previous weekly high.</small></span></div>
+                <div class="checklist-row" id="check-stop"><span class="check-status">Not met</span><span><strong>Stop placement</strong><small>Stop-loss must be below the confirmation candle low.</small></span></div>
+                <div class="checklist-row" id="check-reward"><span class="check-status">Not met</span><span><strong>Reward-to-risk at least 1:3</strong><small>Target reward must be at least three times the risk.</small></span></div>
+              </div>
+              <div class="verdict-card no-trade" id="value-verdict" aria-live="polite">
+                <span class="verdict-icon" aria-hidden="true">!</span>
+                <span><small>VERDICT</small><strong>NO TRADE</strong><span class="verdict-reason">Meet all four checks to change the rule verdict.</span></span>
+              </div>
+              <p class="calculator-note">Rule-check output only; it is not a recommendation to enter a trade.</p>
+            </section>
+
+            <section class="calculator-panel" id="panel-cup-pattern" role="tabpanel" aria-labelledby="tab-cup-pattern" hidden>
+              <div class="calculator-panel-heading">
+                <div><h2>Cup Pattern planner</h2><p>Set a reference price (RP) to map entry, stop and staged targets.</p></div>
+                <span class="long-trade-note">Formula-based plan</span>
+              </div>
+              <div class="cup-input-row">
+                <label class="calculator-field" for="cup-reference-price">
+                  <span>Reference price (RP) <small>₹</small></span>
+                  <input id="cup-reference-price" type="number" min="0" step="any" placeholder="e.g. 100" inputmode="decimal">
+                  <small class="field-error" id="cup-reference-price-error"></small>
+                </label>
+                <div class="level-picker">
+                  <span>Target ladder</span>
+                  <div class="level-buttons" role="group" aria-label="Cup Pattern target level">
+                    <button type="button" class="level-button" data-level="1" aria-pressed="false">Level 1</button>
+                    <button type="button" class="level-button" data-level="2" aria-pressed="false">Level 2</button>
+                    <button type="button" class="level-button" data-level="3" aria-pressed="false">Level 3</button>
+                  </div>
+                </div>
+              </div>
+              <div class="calculator-output-grid compact-output-grid cup-output-grid" id="cup-results" hidden aria-live="polite">
+                <article class="output-card"><span>ENTRY · RP + 4%</span><strong id="cup-entry">—</strong></article>
+                <article class="output-card"><span>STOP · RP − 2%</span><strong id="cup-stop">—</strong></article>
+                <article class="output-card"><span>RISK PER SHARE</span><strong id="cup-risk-per-share">—</strong></article>
+                <article class="output-card"><span>POSITION QUANTITY</span><strong id="cup-quantity">—</strong></article>
+              </div>
+              <div class="cup-table-card" id="cup-table-card" hidden>
+                <div class="cup-table-heading"><h3>Target ladder</h3><span id="cup-level-heading">Level —</span></div>
+                <div class="table-wrap">
+                  <table class="cup-table">
+                    <thead><tr><th>TARGET</th><th>% FROM ENTRY</th><th>PRICE</th><th>QTY TO SELL</th><th>STOP AFTER</th></tr></thead>
+                    <tbody id="cup-target-rows"></tbody>
+                  </table>
+                </div>
+                <p class="cup-table-note" id="cup-table-note"></p>
+              </div>
+              <div class="calculator-empty" id="cup-empty">Enter a reference price and choose a target level to build the plan.</div>
+              <p class="calculator-note">The abbreviation “RP” follows the PRD; its full meaning is not specified.</p>
+            </section>
+          </section>
+
+          <section class="view-panel daily-research-view" id="daily-market-research-view" data-module="DailyMarketResearch" hidden>
+            <div class="page-heading compact-heading research-heading">
+              <div>
+                <div class="eyebrow"><span class="eyebrow-line"></span> DAILYMARKETRESEARCH</div>
+                <h1>Daily Market Brief</h1>
+                <p class="heading-copy">A factual, sourced snapshot of the latest market session.</p>
+              </div>
+              <button class="research-refresh" id="refresh-research" type="button" aria-label="Refresh market brief">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 7v5h-5M4 17v-5h5"/><path d="M6.2 9a7 7 0 0 1 11.6-2L20 12M4 12l2.2 5a7 7 0 0 0 11.6-2"/></svg>
+                Refresh brief
+              </button>
+            </div>
+
+            <div class="research-meta" aria-label="Brief timing">
+              <div><small>TODAY · IST</small><strong id="research-today">—</strong></div>
+              <span class="research-meta-divider"></span>
+              <div><small>LAST UPDATED</small><strong id="research-updated">No verified data</strong></div>
+              <span class="research-meta-divider"></span>
+              <div><small>SESSION COVERED</small><strong id="research-session">Not verified</strong></div>
+              <span class="research-unavailable"><span></span>Data unavailable</span>
+            </div>
+
+            <div class="research-alert" role="status" aria-live="polite">
+              <span class="research-alert-icon" aria-hidden="true">!</span>
+              <span><strong>Brief unavailable</strong><small>No verified news or market-data source is connected. We won't show unverified headlines or stale closes.</small></span>
+            </div>
+
+            <section class="research-section" aria-labelledby="research-headlines-title">
+              <div class="research-section-heading">
+                <div>
+                  <div class="research-title-line"><span class="research-section-icon headline-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h14v16H5zM8 8h8M8 12h8M8 16h5"/></svg></span><h2 id="research-headlines-title">Top market headlines</h2><span class="headline-count" id="headline-count">0 verified</span></div>
+                  <p>Ranked by breadth of potential NIFTY impact. Facts only, with a named source on every story.</p>
+                </div>
+                <span class="word-count"><strong id="research-word-count">0</strong> / 300 words</span>
+              </div>
+              <div class="headline-empty" id="headline-empty">
+                <span class="headline-empty-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h14v16H5zM8 8h8M8 12h5"/></svg></span>
+                <strong>No verified headlines available</strong>
+                <p>Stories will appear here only after a source and publication time are verified. No headlines are being padded into this brief.</p>
+                <span class="headline-empty-count">0 of 5 stories verified</span>
+              </div>
+              <div class="headline-list" id="headline-list" hidden></div>
+            </section>
+
+            <section class="research-section global-closes-section" aria-labelledby="global-closes-title">
+              <div class="research-section-heading">
+                <div>
+                  <div class="research-title-line"><span class="research-section-icon global-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M3.5 12h17M12 3.5c2.2 2.3 3.3 5.1 3.3 8.5s-1.1 6.2-3.3 8.5C9.8 18.2 8.7 15.4 8.7 12s1.1-6.2 3.3-8.5z"/></svg></span><h2 id="global-closes-title">Global market closes</h2></div>
+                  <p>Previous trading-day closes. Dates may differ by market holiday.</p>
+                </div>
+                <span class="close-date-note">Last close · date unavailable</span>
+              </div>
+              <div class="global-table-wrap">
+                <table class="global-closes-table">
+                  <thead><tr><th>INDEX</th><th>TRADING DATE</th><th>CLOSE</th><th>CHANGE (PTS)</th><th>CHANGE (%)</th><th>SOURCE</th></tr></thead>
+                  <tbody id="global-closes-body"></tbody>
+                </table>
+              </div>
+              <div class="global-data-note"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5m0-8h.01"/></svg> Global index data is unavailable until a licensed or exchange-published source is connected.</div>
+            </section>
+
+            <footer class="research-footer">
+              <div class="research-disclaimer"><span class="research-disclaimer-mark">i</span><strong>Education only. Not investment advice.</strong></div>
+              <div class="research-footer-meta"><span>Sources: No verified sources connected</span><span id="research-footer-count">Brief word count: 0 / 300</span></div>
+            </footer>
           </section>
         </div>
       </main>

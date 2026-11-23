@@ -28,7 +28,9 @@ const state = {
   sortKey: "stock",
   sortDirection: 1,
   lastRunSetupId: null,
-  lastRunAt: ""
+  lastRunAt: "",
+  activeCalculatorTab: "risk",
+  cupLevel: null
 };
 
 const setupGrid = document.getElementById("setup-grid");
@@ -387,8 +389,284 @@ function globeIcon() {
   return '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M3.5 12h17M12 3.5c2.2 2.3 3.3 5.1 3.3 8.5s-1.1 6.2-3.3 8.5C9.8 18.2 8.7 15.4 8.7 12s1.1-6.2 3.3-8.5z"/></svg>';
 }
 
+function formatMoney(value) {
+  return new Intl.NumberFormat("en-IN", {
+    style: "currency",
+    currency: "INR",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  }).format(value);
+}
+
+function readPositiveInput(inputId, errorId, label) {
+  const input = document.getElementById(inputId);
+  const value = input.value.trim() === "" ? NaN : Number(input.value);
+  let message = "";
+  if (!Number.isFinite(value)) message = `${label} is required.`;
+  else if (value <= 0) message = `${label} must be greater than zero.`;
+  input.setAttribute("aria-invalid", String(Boolean(message)));
+  document.getElementById(errorId).textContent = message;
+  return message ? null : value;
+}
+
+function getRiskBudget() {
+  const capital = readPositiveInput("calc-capital", "calc-capital-error", "Capital");
+  const riskPercent = readPositiveInput("calc-risk-percent", "calc-risk-error", "Risk per trade");
+  const budget = document.getElementById("calc-risk-budget");
+  const note = document.getElementById("calc-risk-budget-note");
+  if (capital === null || riskPercent === null) {
+    budget.textContent = "—";
+    note.textContent = "Enter valid capital and risk.";
+    return null;
+  }
+  const amount = capital * riskPercent / 100;
+  budget.textContent = formatMoney(amount);
+  note.textContent = `${riskPercent}% of ${formatMoney(capital)}`;
+  return amount;
+}
+
+function setCalculatorEmpty(id, message) {
+  const empty = document.getElementById(id);
+  empty.textContent = message;
+  empty.hidden = false;
+}
+
+function renderRiskCalculator() {
+  const budget = getRiskBudget();
+  const entry = readPositiveInput("risk-entry", "risk-entry-error", "Entry price");
+  const stop = readPositiveInput("risk-stop", "risk-stop-error", "Stop-loss");
+  const target = readPositiveInput("risk-target", "risk-target-error", "Target");
+  const results = document.getElementById("risk-results");
+  const warning = document.getElementById("risk-warning");
+  const empty = document.getElementById("risk-empty");
+  warning.hidden = true;
+
+  if (entry !== null && stop !== null && stop >= entry) {
+    document.getElementById("risk-stop").setAttribute("aria-invalid", "true");
+    document.getElementById("risk-stop-error").textContent = "For long trades, stop-loss must be below entry.";
+  }
+  if (entry !== null && target !== null && target <= entry) {
+    document.getElementById("risk-target").setAttribute("aria-invalid", "true");
+    document.getElementById("risk-target-error").textContent = "For long trades, target must be above entry.";
+  }
+  const levelsValid = entry !== null && stop !== null && target !== null && stop < entry && target > entry;
+  if (!levelsValid || budget === null) {
+    results.hidden = true;
+    setCalculatorEmpty("risk-empty", "Enter valid capital, risk, entry, stop-loss and target to see position sizing.");
+    return;
+  }
+
+  const riskPerShare = entry - stop;
+  const rewardPerShare = target - entry;
+  const quantity = Math.floor(budget / riskPerShare);
+  const riskReward = rewardPerShare / riskPerShare;
+  document.getElementById("risk-per-share").textContent = formatMoney(riskPerShare);
+  document.getElementById("risk-quantity").textContent = quantity.toLocaleString("en-IN");
+  document.getElementById("risk-amount").textContent = formatMoney(quantity * riskPerShare);
+  document.getElementById("reward-amount").textContent = formatMoney(quantity * rewardPerShare);
+  document.getElementById("risk-reward-ratio").textContent = `1:${riskReward.toFixed(2)}`;
+  warning.hidden = riskReward >= 3;
+  warning.textContent = riskReward < 3 ? `Reward-to-risk is below 1:3 (currently 1:${riskReward.toFixed(2)}).` : "";
+  results.hidden = false;
+  empty.hidden = true;
+}
+
+function setChecklist(id, met, reason) {
+  const row = document.getElementById(id);
+  row.classList.toggle("met", met);
+  row.querySelector(".check-status").textContent = met ? "Met" : "Not met";
+  row.querySelector("small").textContent = reason;
+}
+
+function renderValueBuyCalculator() {
+  const budget = getRiskBudget();
+  const monthlyRsi = readPositiveInput("value-monthly-rsi", "value-monthly-rsi-error", "Monthly RSI");
+  const entry = readPositiveInput("value-entry", "value-entry-error", "Entry price");
+  const confirmationLow = readPositiveInput("value-confirm-low", "value-confirm-low-error", "Confirmation candle low");
+  const stop = readPositiveInput("value-stop", "value-stop-error", "Stop-loss");
+  const target = readPositiveInput("value-target", "value-target-error", "Target");
+  const weeklyConfirmed = document.getElementById("value-weekly-confirmation").checked;
+
+  const longLevelsValid = entry !== null && stop !== null && target !== null && stop < entry && target > entry;
+  if (entry !== null && stop !== null && stop >= entry) {
+    document.getElementById("value-stop").setAttribute("aria-invalid", "true");
+    document.getElementById("value-stop-error").textContent = "For long trades, stop-loss must be below entry.";
+  }
+  if (entry !== null && target !== null && target <= entry) {
+    document.getElementById("value-target").setAttribute("aria-invalid", "true");
+    document.getElementById("value-target-error").textContent = "For long trades, target must be above entry.";
+  }
+
+  const rsiMet = monthlyRsi !== null && monthlyRsi === 40;
+  const stopMet = stop !== null && confirmationLow !== null && stop < confirmationLow && entry !== null && stop < entry;
+  const riskReward = longLevelsValid ? (target - entry) / (entry - stop) : null;
+  const rewardMet = riskReward !== null && riskReward >= 3;
+  setChecklist("check-rsi", rsiMet, rsiMet ? "Monthly RSI is exactly 40." : monthlyRsi === null ? "Enter the required value to evaluate this rule." : "Monthly RSI must equal 40.");
+  setChecklist("check-weekly", weeklyConfirmed, weeklyConfirmed ? "Weekly confirmation is checked." : "Tick the box when the weekly candle condition is met.");
+  setChecklist("check-stop", stopMet, stopMet ? "Stop-loss is below the confirmation candle low." : stop === null || confirmationLow === null ? "Enter stop-loss and confirmation low to evaluate this rule." : "Stop-loss must be below the confirmation candle low and entry.");
+  setChecklist("check-reward", rewardMet, rewardMet
+    ? `Reward-to-risk is 1:${riskReward.toFixed(2)}.`
+    : riskReward === null ? "Enter valid entry, stop-loss and target levels." : `Current reward-to-risk is 1:${riskReward.toFixed(2)}; it must be at least 1:3.`);
+
+  const summary = document.getElementById("value-buy-summary");
+  const canSize = longLevelsValid && budget !== null;
+  if (canSize) {
+    const riskPerShare = entry - stop;
+    const rewardPerShare = target - entry;
+    document.getElementById("value-risk-per-share").textContent = formatMoney(riskPerShare);
+    document.getElementById("value-reward-per-share").textContent = formatMoney(rewardPerShare);
+    document.getElementById("value-risk-reward").textContent = `1:${riskReward.toFixed(2)}`;
+    document.getElementById("value-quantity").textContent = Math.floor(budget / riskPerShare).toLocaleString("en-IN");
+  }
+  summary.hidden = !canSize;
+
+  const allMet = rsiMet && weeklyConfirmed && stopMet && rewardMet && canSize;
+  const verdict = document.getElementById("value-verdict");
+  verdict.classList.toggle("trade", allMet);
+  verdict.classList.toggle("no-trade", !allMet);
+  verdict.querySelector(".verdict-icon").textContent = allMet ? "✓" : "!";
+  verdict.querySelector("strong").textContent = allMet ? "TRADE" : "NO TRADE";
+  verdict.querySelector(".verdict-reason").textContent = allMet
+    ? "All four Value Buy checks are met. This is a rule verdict, not investment advice."
+    : "Meet all four checks with valid levels to change the rule verdict.";
+}
+
+const cupTargets = {
+  1: [10, 20, 30],
+  2: [20, 40, 60, 80, 100],
+  3: [100, 200, 300]
+};
+
+function renderCupCalculator() {
+  const budget = getRiskBudget();
+  const referencePrice = readPositiveInput("cup-reference-price", "cup-reference-price-error", "Reference price");
+  const results = document.getElementById("cup-results");
+  const table = document.getElementById("cup-table-card");
+  const empty = document.getElementById("cup-empty");
+  if (referencePrice === null || budget === null || state.cupLevel === null) {
+    results.hidden = true;
+    table.hidden = true;
+    setCalculatorEmpty("cup-empty", referencePrice === null
+      ? "Enter a valid reference price and choose a target level to build the plan."
+      : budget === null
+        ? "Enter valid capital and risk settings to calculate the plan."
+        : "Choose Level 1, Level 2 or Level 3 to build the target ladder.");
+    return;
+  }
+
+  const entry = referencePrice * 1.04;
+  const stop = referencePrice * 0.98;
+  const riskPerShare = entry - stop;
+  const quantity = Math.floor(budget / riskPerShare);
+  document.getElementById("cup-entry").textContent = formatMoney(entry);
+  document.getElementById("cup-stop").textContent = formatMoney(stop);
+  document.getElementById("cup-risk-per-share").textContent = formatMoney(riskPerShare);
+  document.getElementById("cup-quantity").textContent = quantity.toLocaleString("en-IN");
+  document.getElementById("cup-level-heading").textContent = `Level ${state.cupLevel}`;
+
+  const percentages = cupTargets[state.cupLevel];
+  const targetPrices = percentages.map(percent => entry * (1 + percent / 100));
+  const rows = document.getElementById("cup-target-rows");
+  rows.innerHTML = "";
+  percentages.forEach((percent, index) => {
+    const row = document.createElement("tr");
+    const targetName = `T${index + 1}`;
+    const qtyToSell = state.cupLevel === 1 && quantity % 3 === 0
+      ? (quantity / 3).toLocaleString("en-IN")
+      : "Not specified";
+    let stopAfter = "Not specified";
+    if (state.cupLevel === 1 && index === 0) stopAfter = "Entry";
+    if (state.cupLevel === 1 && index === 1) stopAfter = `T1 · ${formatMoney(targetPrices[0])}`;
+    [targetName, `+${percent}%`, formatMoney(targetPrices[index]), qtyToSell, stopAfter].forEach(value => {
+      const cell = document.createElement("td");
+      cell.textContent = value;
+      row.appendChild(cell);
+    });
+    rows.appendChild(row);
+  });
+  document.getElementById("cup-table-note").textContent = state.cupLevel === 1
+    ? quantity % 3 === 0
+      ? "Level 1 divides the position into three equal whole-share exits. Price display is rounded to two decimals."
+      : `Level 1 calls for one-third at each target, but ${quantity.toLocaleString("en-IN")} shares do not divide evenly into three; the PRD does not specify how to allocate the remainder. Prices are displayed to two decimals.`
+    : "The PRD does not specify quantity splits or stop movement for this level. Prices are displayed to two decimals.";
+  results.hidden = false;
+  table.hidden = false;
+  empty.hidden = true;
+}
+
+function renderActiveCalculator() {
+  if (state.activeCalculatorTab === "value-buy") renderValueBuyCalculator();
+  else if (state.activeCalculatorTab === "cup-pattern") renderCupCalculator();
+  else renderRiskCalculator();
+}
+
+function renderDailyMarketResearch() {
+  const today = new Intl.DateTimeFormat("en-IN", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+    timeZone: "Asia/Kolkata"
+  }).format(new Date());
+  document.getElementById("research-today").textContent = today;
+  document.getElementById("research-updated").textContent = "Unavailable — no source feed";
+  document.getElementById("research-session").textContent = "Not verified";
+  document.getElementById("headline-count").textContent = "0 verified";
+  document.getElementById("research-word-count").textContent = "0";
+  document.getElementById("research-footer-count").textContent = "Brief word count: 0 / 300";
+
+  const indices = ["Dow Jones", "DAX", "CAC 40", "Hang Seng", "Nikkei 225"];
+  const body = document.getElementById("global-closes-body");
+  body.innerHTML = "";
+  indices.forEach(name => {
+    const row = document.createElement("tr");
+    const symbol = name.split(/\s+/).map(part => part[0]).join("").slice(0, 2);
+    const indexCell = document.createElement("td");
+    const nameWrap = document.createElement("span");
+    const mark = document.createElement("span");
+    nameWrap.className = "global-index-name";
+    mark.className = "global-index-mark";
+    mark.textContent = symbol;
+    nameWrap.append(mark, document.createTextNode(name));
+    indexCell.appendChild(nameWrap);
+    row.appendChild(indexCell);
+
+    ["Unavailable", "Unavailable", "—", "—"].forEach((value, index) => {
+      const cell = document.createElement("td");
+      const unavailable = document.createElement("span");
+      unavailable.className = "global-unavailable";
+      unavailable.textContent = value;
+      if (index === 2) unavailable.setAttribute("aria-label", "Change in points unavailable");
+      if (index === 3) unavailable.setAttribute("aria-label", "Change percentage unavailable");
+      cell.appendChild(unavailable);
+      row.appendChild(cell);
+    });
+
+    const sourceCell = document.createElement("td");
+    const source = document.createElement("span");
+    source.className = "global-source";
+    source.textContent = "Not connected";
+    sourceCell.appendChild(source);
+    row.appendChild(sourceCell);
+    body.appendChild(row);
+  });
+}
+
+function selectCalculatorTab(tab) {
+  state.activeCalculatorTab = tab;
+  document.querySelectorAll("[data-calculator-tab]").forEach(button => {
+    const active = button.dataset.calculatorTab === tab;
+    button.classList.toggle("active", active);
+    button.setAttribute("aria-selected", String(active));
+    button.tabIndex = active ? 0 : -1;
+  });
+  document.querySelectorAll('[role="tabpanel"]').forEach(panel => {
+    panel.hidden = panel.id !== `panel-${tab}`;
+  });
+  renderActiveCalculator();
+}
+
 function switchView(view) {
-  const labels = { scanner: "Scanner", saved: "Saved setups", schedule: "Schedule" };
+  const labels = { scanner: "Scanner", saved: "Saved setups", schedule: "Schedule", calculator: "Trade calculator", "daily-market-research": "Daily Market Research" };
   document.querySelectorAll(".view-panel").forEach(panel => {
     panel.hidden = panel.id !== `${view}-view`;
   });
@@ -401,6 +679,8 @@ function init() {
   document.getElementById("date-label").textContent = new Date().toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
   renderSetups();
   renderResults();
+  renderActiveCalculator();
+  renderDailyMarketResearch();
   document.getElementById("command-form").addEventListener("submit", event => {
     event.preventDefault();
     handleCommand(commandInput.value);
@@ -429,6 +709,23 @@ function init() {
   document.getElementById("help-button").addEventListener("click", () => showToast("Enter a saved setup name or use a quick-run chip to preview its filter and sample rows."));
   document.getElementById("notification-button").addEventListener("click", () => showToast("You’re all caught up."));
   document.getElementById("learn-more").addEventListener("click", () => showToast("FinSight helps you organize and preview your market scans."));
+  document.getElementById("refresh-research").addEventListener("click", () => showToast("Brief refresh unavailable: no verified news or market-data source is connected."));
+  document.querySelectorAll("#calculator-view input").forEach(input => input.addEventListener("input", renderActiveCalculator));
+  document.querySelectorAll("[data-calculator-tab]").forEach((button, index, buttons) => {
+    button.addEventListener("click", () => selectCalculatorTab(button.dataset.calculatorTab));
+    button.addEventListener("keydown", event => {
+      if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+      event.preventDefault();
+      const nextIndex = (index + (event.key === "ArrowRight" ? 1 : buttons.length - 1)) % buttons.length;
+      buttons[nextIndex].focus();
+      selectCalculatorTab(buttons[nextIndex].dataset.calculatorTab);
+    });
+  });
+  document.querySelectorAll("[data-level]").forEach(button => button.addEventListener("click", () => {
+    state.cupLevel = Number(button.dataset.level);
+    document.querySelectorAll("[data-level]").forEach(levelButton => levelButton.setAttribute("aria-pressed", String(levelButton === button)));
+    renderCupCalculator();
+  }));
 }
 
 init();
