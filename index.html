@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#f5f7fb">
+    <title>FinSight — Market scanner</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+    <script src="app.js" defer></script>
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar" aria-label="Main navigation">
+        <a class="brand" href="#" aria-label="FinSight home">
+          <span class="brand-mark" aria-hidden="true">
+            <svg viewBox="0 0 32 32"><path d="M5 22.5 12 15l5 4 10-11"/><path d="M20 8h7v7"/></svg>
+          </span>
+          <span>fin<span class="brand-light">sight</span></span>
+        </a>
+
+        <div class="workspace-label">WORKSPACE</div>
+        <nav class="primary-nav">
+          <button class="nav-item active" type="button" data-view="scanner">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.8"/><path d="m16 16 4.2 4.2M8 11h5.5M10.75 8.25v5.5"/></svg>
+            <span>Scanner</span><span class="nav-count">2</span>
+          </button>
+          <button class="nav-item" type="button" data-view="saved">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3.8h9l3 3V20H6z"/><path d="M9 3.8v6h6v-6M9 20v-6h6v6"/></svg>
+            <span>Saved setups</span>
+          </button>
+          <button class="nav-item" type="button" data-view="schedule">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 7v5l3.5 2"/></svg>
+            <span>Schedule</span><span class="nav-dot"></span>
+          </button>
+        </nav>
+
+        <div class="sidebar-divider"></div>
+        <div class="workspace-label setup-label">YOUR SETUPS <button id="add-setup" class="icon-button sidebar-add" type="button" aria-label="Create a setup">+</button></div>
+        <div id="sidebar-setups" class="sidebar-setups"></div>
+
+        <div class="sidebar-bottom">
+          <div class="plan-card">
+            <div class="plan-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 2.4 5.2L20 9l-4 4 .9 5.7L12 16l-4.9 2.7L8 13l-4-4 5.6-.8z"/></svg></div>
+            <strong>Make better moves</strong>
+            <p>Your scans, all in one place.</p>
+            <button type="button" class="plan-link" id="learn-more">Explore FinSight <span>→</span></button>
+          </div>
+          <button class="profile-button" type="button" id="profile-button">
+            <span class="avatar">A</span>
+            <span class="profile-copy"><strong>Arjun Mehta</strong><small>Personal workspace</small></span>
+            <span class="profile-more">···</span>
+          </button>
+        </div>
+      </aside>
+
+      <main class="main-content">
+        <header class="topbar">
+          <div class="breadcrumbs"><span>Workspace</span><span class="crumb-slash">/</span><strong id="breadcrumb-current">Scanner</strong></div>
+          <div class="topbar-actions">
+            <span class="market-status"><span class="status-pulse"></span>Market closed</span>
+            <button class="top-icon" type="button" aria-label="Help" id="help-button">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9a2.5 2.5 0 1 1 4.4 1.6c-1.1 1.2-2 1.4-2 3M12 17.2h.01"/></svg>
+            </button>
+            <button class="top-icon notification-button" type="button" aria-label="Notifications" id="notification-button">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 9a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/></svg>
+              <span></span>
+            </button>
+          </div>
+        </header>
+
+        <div class="page-wrap">
+          <section class="view-panel" id="scanner-view">
+            <div class="page-heading">
+              <div>
+                <div class="eyebrow"><span class="eyebrow-line"></span> YOUR MARKET, IN FOCUS</div>
+                <h1>Good afternoon, Arjun <span class="wave">✳</span></h1>
+                <p class="heading-copy">Your setups are ready when you are. What are we scanning today?</p>
+              </div>
+              <button type="button" class="date-pill" id="today-date">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15" rx="2"/><path d="M7.5 3v4M16.5 3v4M3.5 9.5h17"/></svg>
+                <span id="date-label"></span>
+                <svg class="date-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="m7 10 5 5 5-5"/></svg>
+              </button>
+            </div>
+
+            <div class="command-card">
+              <div class="command-top">
+                <div class="command-sparkle"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 2 1.8 7.2L21 12l-7.2 2.8L12 22l-2.8-7.2L2 12l7.2-2.8z"/></svg></div>
+                <div class="command-copy">
+                  <strong>Tell me what you're looking for</strong>
+                  <span>Try a saved scan command, such as “scan GFS”</span>
+                </div>
+                <span class="powered-by">SCAN COMMAND</span>
+              </div>
+              <form id="command-form" class="command-form">
+                <label class="sr-only" for="command-input">Describe a scan</label>
+                <span class="input-search" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="10.8" cy="10.8" r="6.8"/><path d="m16 16 4.2 4.2"/></svg></span>
+                <input id="command-input" type="text" placeholder="Type a command, e.g. scan GFS..." autocomplete="off">
+                <span class="shortcut">↵</span>
+                <button class="run-button" type="submit">Run scan <span>→</span></button>
+              </form>
+              <div class="quick-commands">
+                <span>QUICK RUN</span>
+                <button type="button" class="quick-chip" data-command="Scan GFS"><span class="chip-dot blue"></span> GFS</button>
+                <button type="button" class="quick-chip" data-command="Scan Advance GFS"><span class="chip-dot violet"></span> Advance GFS</button>
+                <button type="button" class="quick-chip" data-command="Changes today"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h15m-5-5 5 5-5 5"/></svg> Changes today</button>
+              </div>
+              <div class="command-feedback" id="command-feedback" role="status" aria-live="polite"></div>
+            </div>
+
+            <div class="section-heading">
+              <div>
+                <h2>Your saved setups <span class="section-count" id="setup-count">02</span></h2>
+                <p>Keep an eye on the patterns that matter to you.</p>
+              </div>
+              <button class="text-button" type="button" data-view="saved">View all setups <span>→</span></button>
+            </div>
+
+            <div class="setup-grid" id="setup-grid"></div>
+
+            <section class="results-section" id="results-section" aria-labelledby="results-title">
+              <div class="results-heading">
+                <div>
+                  <div class="results-title-row"><span class="live-dot"></span><h2 id="results-title">Latest scan results</h2><span class="demo-tag">DEMO DATA</span></div>
+                  <p id="results-subtitle">A clear view of what matched your setup.</p>
+                </div>
+                <div class="results-actions">
+                  <button class="secondary-button" type="button" id="changes-button">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h15m-5-5 5 5-5 5"/></svg> Changes
+                  </button>
+                  <button class="secondary-button export-button" type="button" id="export-button">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m-5-5 5 5 5-5M4 17v3h16v-3"/></svg> Export CSV
+                  </button>
+                </div>
+              </div>
+              <div class="audit-strip">
+                <div class="audit-item"><span class="audit-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 7v5l3 2"/></svg></span><span><small>RUN TIME</small><strong id="run-time">—</strong></span></div>
+                <span class="audit-divider"></span>
+                <div class="audit-item"><span class="audit-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 19h18M5 16V9m5 7V5m5 11v-4m5 4V7"/></svg></span><span><small>DATA AS OF</small><strong id="data-time">—</strong></span></div>
+                <span class="audit-divider"></span>
+                <div class="audit-item"><span class="audit-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M3.8 12h16.4M12 3.5c2.2 2.3 3.3 5.1 3.3 8.5s-1.1 6.2-3.3 8.5C9.8 18.2 8.7 15.4 8.7 12s1.1-6.2 3.3-8.5z"/></svg></span><span><small>UNIVERSE</small><strong>NSE F&amp;O stocks</strong></span></div>
+                <span class="audit-divider"></span>
+                <div class="audit-filter"><small>FILTER</small><strong id="filter-summary"></strong></div>
+              </div>
+              <div class="table-wrap">
+                <table id="results-table">
+                  <thead><tr id="table-head"></tr></thead>
+                  <tbody id="results-body"></tbody>
+                </table>
+                <div id="empty-results" class="empty-state" hidden>
+                  <span class="empty-icon">⌕</span>
+                  <strong>No stocks matched</strong>
+                  <p>Try another setup or review the filter above.</p>
+                </div>
+              </div>
+              <div class="table-footer">
+                <span id="result-count"></span>
+                <span class="data-disclaimer"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5m0-8h.01"/></svg> Illustrative sample data only — not live market data.</span>
+              </div>
+              <div class="change-summary" id="change-summary" hidden></div>
+            </section>
+
+            <footer class="page-footer">
+              <span>FinSight is a market-scanning tool, not investment advice.</span>
+              <span>Data shown is illustrative <span class="footer-divider">·</span> v1.0</span>
+            </footer>
+          </section>
+
+          <section class="view-panel secondary-view" id="saved-view" hidden>
+            <div class="page-heading compact-heading">
+              <div><div class="eyebrow"><span class="eyebrow-line"></span> YOUR PLAYBOOK</div><h1>Saved setups</h1><p class="heading-copy">Your rules, ready to run whenever you need them.</p></div>
+              <button class="primary-button" type="button" id="new-setup-button"><span>+</span> New setup</button>
+            </div>
+            <div class="saved-list" id="saved-list"></div>
+          </section>
+
+          <section class="view-panel secondary-view" id="schedule-view" hidden>
+            <div class="page-heading compact-heading">
+              <div><div class="eyebrow"><span class="eyebrow-line"></span> STAY CONSISTENT</div><h1>Scheduled scans</h1><p class="heading-copy">Your saved scans, delivered on your schedule.</p></div>
+            </div>
+            <div class="schedule-card">
+              <div class="schedule-card-heading"><div class="schedule-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 7v5l3.5 2"/></svg></div><div><h2>Weekday market close</h2><p>Runs after the market closes, Monday to Friday.</p></div><button id="schedule-toggle" class="toggle-switch" type="button" aria-pressed="false" aria-label="Enable weekday schedule"><span></span></button></div>
+              <div class="schedule-details"><span><small>RUNS AT</small><strong>4:10 PM IST</strong></span><span><small>SETUPS</small><strong>GFS, Advance GFS</strong></span><span><small>DELIVERY</small><strong>In-app inbox</strong></span></div>
+              <p class="schedule-note"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5m0-8h.01"/></svg> Exchange holidays are skipped. Scheduled delivery is a prototype preview and is not connected to a live data service.</p>
+              <div class="schedule-feedback" id="schedule-feedback" role="status" aria-live="polite">Schedule is currently off.</div>
+            </div>
+          </section>
+        </div>
+      </main>
+    </div>
+
+    <dialog id="setup-dialog" class="setup-dialog">
+      <form method="dialog" id="setup-form">
+        <div class="dialog-heading"><div><span class="eyebrow">SETUP BUILDER</span><h2 id="dialog-title">Create a setup</h2></div><button class="dialog-close" type="button" id="close-dialog" aria-label="Close dialog">×</button></div>
+        <label for="setup-name">Setup name</label>
+        <input id="setup-name" name="name" required maxlength="32" placeholder="e.g. My pullback scan">
+        <label for="daily-range">Daily RSI range</label>
+        <select id="daily-range" name="range"><option value="38-43">Between 38 and 43</option><option value="58-62">Between 58 and 62</option></select>
+        <div class="dialog-filter"><strong>Monthly RSI(14)</strong> above 60 <span>·</span> <strong>Weekly RSI(14)</strong> above 60 <span>·</span> <strong>Daily RSI(14)</strong> between the selected values</div>
+        <p class="dialog-hint">Universe: NSE F&amp;O stocks. Range limits are inclusive.</p>
+        <div class="dialog-actions"><button type="button" class="delete-button" id="delete-setup-button" hidden>Delete setup</button><button type="button" class="secondary-button" id="cancel-dialog">Cancel</button><button type="submit" class="primary-button">Save setup</button></div>
+      </form>
+    </dialog>
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  </body>
+</html>
